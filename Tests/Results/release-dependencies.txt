@@ -1,0 +1,29 @@
+Microsoft (R) COFF/PE Dumper Version 14.50.35730.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+
+Dump of file C:\Apps\GameBaseDx11_ufbx_full\w-endo-gamebasedx11-53933e577ee7\x64\Release\GameBaseDx11.exe
+
+File Type: EXECUTABLE IMAGE
+
+  Image has the following dependencies:
+
+    KERNEL32.dll
+    USER32.dll
+    GDI32.dll
+    ole32.dll
+    d3d11.dll
+    D3DCOMPILER_47.dll
+    DINPUT8.dll
+    XINPUT1_4.dll
+    WINMM.dll
+
+  Summary
+
+        4000 .data
+        1000 .fptable
+        5000 .pdata
+       24000 .rdata
+        2000 .reloc
+        1000 .rsrc
+       70000 .text
