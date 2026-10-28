@@ -1,9 +1,10 @@
-#define NOMINMAX
+﻿#define NOMINMAX
 #include "Fbx.h"
 #include "Model.h"
 #include "Direct3D.h"
 #include "Camera.h"
 #include "Texture.h"
+#include "TextureManager.h"
 #include <d3d11sdklayers.h>
 #include <wrl/client.h>
 #include <cstdio>
@@ -38,6 +39,25 @@ static std::vector<Triangle> triangles(ufbx_scene* scene) {
  }
  return result;
 }
+static std::vector<BYTE> ReadDrawnVertices(int h) {
+   Model::Draw(h);
+   std::vector<BYTE> bytes;
+   ComPtr<ID3D11Buffer> vb; UINT stride=0,offset=0;
+   Direct3D::pContext_->IAGetVertexBuffers(0,1,&vb,&stride,&offset);
+   if (!vb) { check(false,"take buffer binding"); return bytes; }
+   D3D11_BUFFER_DESC d{};vb->GetDesc(&d);
+   d.Usage=D3D11_USAGE_STAGING;d.BindFlags=0;d.CPUAccessFlags=D3D11_CPU_ACCESS_READ;d.MiscFlags=0;
+   ComPtr<ID3D11Buffer> copy;
+   if(FAILED(Direct3D::pDevice_->CreateBuffer(&d,nullptr,&copy))) {check(false,"take readback allocation");return bytes;}
+   Direct3D::pContext_->CopyResource(copy.Get(),vb.Get());D3D11_MAPPED_SUBRESOURCE m{};
+   if(SUCCEEDED(Direct3D::pContext_->Map(copy.Get(),0,D3D11_MAP_READ,0,&m))) {
+    bytes.assign((BYTE*)m.pData,(BYTE*)m.pData+d.ByteWidth);
+    Direct3D::pContext_->Unmap(copy.Get(),0);
+   } else check(false,"take readback map");
+   return bytes;
+
+}
+
 int main(int argc,char** argv) {
  if(argc<2) return 2;
  const bool hardware = std::getenv("UFBX_TEST_HARDWARE") != nullptr;
@@ -46,6 +66,19 @@ int main(int argc,char** argv) {
  HRESULT hr=D3D11CreateDevice(nullptr,driver,nullptr,flags,nullptr,0,D3D11_SDK_VERSION,&Direct3D::pDevice_,nullptr,&Direct3D::pContext_);
  if(FAILED(hr)) { flags=0; hr=D3D11CreateDevice(nullptr,driver,nullptr,flags,nullptr,0,D3D11_SDK_VERSION,&Direct3D::pDevice_,nullptr,&Direct3D::pContext_); }
  check(SUCCEEDED(hr),"WARP device"); if(FAILED(hr)) return 1;
+ {
+  auto first = TextureManager::Load("char.png");
+  auto alias = TextureManager::Load(".\\CHAR.PNG");
+  check(first && first == alias, "texture cache shares normalized file paths");
+  std::weak_ptr<Texture> lifetime = first;
+  first.reset();
+  check(!lifetime.expired(), "shared texture survives first owner release");
+  alias.reset();
+  check(lifetime.expired(), "last owner releases cached texture");
+  check(!TextureManager::Load("__missing_texture__.png"), "missing shared texture handled");
+  auto reloaded = TextureManager::Load("char.png");
+  check(reloaded && reloaded->GetSRV(), "texture reload after last owner release");
+ }
  printf("D3D11 %s debug layer: %s\n",hardware?"HARDWARE":"WARP",flags?"enabled":"unavailable");
  ComPtr<ID3D11InfoQueue> info; Direct3D::pDevice_->QueryInterface(IID_PPV_ARGS(&info));
  Direct3D::screenWidth_=Direct3D::screenHeight_=256;
@@ -265,36 +298,20 @@ int main(int argc,char** argv) {
   Model::Release(h);
  }
  {
-  auto snapshot = [] (int h) {
-   Model::Draw(h);
-   std::vector<BYTE> bytes;
-   ComPtr<ID3D11Buffer> vb; UINT stride=0,offset=0;
-   Direct3D::pContext_->IAGetVertexBuffers(0,1,&vb,&stride,&offset);
-   if (!vb) { check(false,"take buffer binding"); return bytes; }
-   D3D11_BUFFER_DESC d{};vb->GetDesc(&d);
-   d.Usage=D3D11_USAGE_STAGING;d.BindFlags=0;d.CPUAccessFlags=D3D11_CPU_ACCESS_READ;d.MiscFlags=0;
-   ComPtr<ID3D11Buffer> copy;
-   if(FAILED(Direct3D::pDevice_->CreateBuffer(&d,nullptr,&copy))) {check(false,"take readback allocation");return bytes;}
-   Direct3D::pContext_->CopyResource(copy.Get(),vb.Get());D3D11_MAPPED_SUBRESOURCE m{};
-   if(SUCCEEDED(Direct3D::pContext_->Map(copy.Get(),0,D3D11_MAP_READ,0,&m))) {
-    bytes.assign((BYTE*)m.pData,(BYTE*)m.pData+d.ByteWidth);
-    Direct3D::pContext_->Unmap(copy.Get(),0);
-   } else check(false,"take readback map");
-   return bytes;
-  };
+
   int a=Model::Load("Run.fbx"), b=Model::Load("Run.fbx");
   check(a>=0&&b>=0,"take handles load");
   if(a>=0&&b>=0) {
    Model::SetAnimFrame(a,15,15,0);Model::SetAnimFrame(b,15,15,0);
    check(Model::SetAnimation(a,"Take 001"),"select static take");
    check(Model::SetAnimation(b,"mixamo.com"),"select moving take");
-   auto still=snapshot(a), moving=snapshot(b), stillAgain=snapshot(a);
+   auto still=ReadDrawnVertices(a), moving=ReadDrawnVertices(b), stillAgain=ReadDrawnVertices(a);
    check(!still.empty() && still!=moving,"same-frame take switch changes GPU vertices");
    check(still==stillAgain,"shared handles retain separate takes");
    check(!Model::SetAnimation(a,"__missing__"),"missing take rejected");
-   check(snapshot(a)==still,"failed selection preserves previous take");
+   check(ReadDrawnVertices(a)==still,"failed selection preserves previous take");
    check(Model::SetAnimation(a,""),"automatic take restored");
-   check(snapshot(a)==moving,"automatic selection skips static take");
+   check(ReadDrawnVertices(a)==moving,"automatic selection skips static take");
    check(Model::GetAnimFrame(a)==15,"selection preserves frame");
   }
   check(!Model::SetAnimation(-1,"mixamo.com"),"invalid animation handle rejected");
@@ -310,6 +327,7 @@ int main(int argc,char** argv) {
  Direct3D::pContext_->ClearState();
  printf("RESULT: %s (%d failures)\n",failures?"FAIL":"PASS",failures);return failures?1:0;
 }
+
 
 
 
