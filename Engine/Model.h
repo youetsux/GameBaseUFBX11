@@ -82,6 +82,12 @@ namespace Model
 	//現在のアニメーションのフレームを取得
 	int GetAnimFrame(int handle);
 
+    // Change only the current frame. Reject invalid handles or out-of-range frames.
+    bool SetCurrentFrame(int handle, int frame);
+
+    // Bake the selected clip into shared CPU vertices; playback state is preserved.
+    bool BakeAnimation(int handle, int startFrame, int endFrame);
+
 	//任意のボーンの位置を取得
 	//引数：handle		調べたいモデルの番号
 	//引数：boneName	調べたいボーンの名前

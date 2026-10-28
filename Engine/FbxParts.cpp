@@ -222,11 +222,34 @@ void FbxParts::Evaluate(const ufbx_scene* evaluated) {
         const ufbx_node* node = evaluated->nodes.data[node_->typed_id];
         if (node && node->mesh) {
             currentNode_ = node;
+            bakedNodePositions_ = nullptr;
             UpdateVertices(node);
             UploadVertices();
         }
     }
 }
+// Capture CPU vertices only: baking does not create or upload GPU buffers.
+bool FbxParts::CaptureVertices(const ufbx_scene* evaluated, VertexSnapshot* snapshot) {
+    if (!evaluated || !node_ || !snapshot || node_->typed_id >= evaluated->nodes.count) {
+        return false;
+    }
+    const ufbx_node* node = evaluated->nodes.data[node_->typed_id];
+    if (!node || !node->mesh) {
+        return false;
+    }
+    UpdateVertices(node);
+    *snapshot = vertices_;
+    return true;
+}
+
+void FbxParts::ApplyVertices(const VertexSnapshot& snapshot,
+    const std::vector<XMFLOAT3>& nodePositions) {
+    vertices_ = snapshot;
+    currentNode_ = node_;
+    bakedNodePositions_ = &nodePositions;
+    UploadVertices();
+}
+
 void FbxParts::Animate(Transform& transform, const ufbx_scene* evaluated) {
     Evaluate(evaluated);
     Draw(transform);
@@ -287,6 +310,10 @@ bool FbxParts::GetBonePosition(const std::string& name, XMFLOAT3* position) cons
         for (size_t clusterIndex = 0; clusterIndex < skin->clusters.count; ++clusterIndex) {
             const ufbx_node* bone = skin->clusters.data[clusterIndex]->bone_node;
             if (bone && name == std::string(bone->name.data, bone->name.length)) {
+                if (bakedNodePositions_ && bone->typed_id < bakedNodePositions_->size()) {
+                    *position = (*bakedNodePositions_)[bone->typed_id];
+                    return true;
+                }
                 *position = ToFloat3(ufbx_vec3{ bone->node_to_world.m03,bone->node_to_world.m13,bone->node_to_world.m23 });
                 return true;
             }

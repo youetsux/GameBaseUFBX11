@@ -7,7 +7,7 @@
 #include "Transform.h"
 #include "ufbx.h"
 using namespace DirectX;
-class FbxParts;
+#include "FbxParts.h"
 struct RayCastData {
  XMFLOAT3 start{}, dir{};
  float dist = 99999.0f;
@@ -22,6 +22,18 @@ class Fbx {
  bool hasEvaluatedFrame_ = false;
  double fps_ = 30.0;
  const ufbx_anim* selectedAnim_ = nullptr;
+ struct BakedFrame {
+  std::vector<FbxParts::VertexSnapshot> parts;
+  std::vector<XMFLOAT3> nodePositions;
+ };
+ struct BakedAnimation {
+  const ufbx_anim* selection = nullptr;
+  int startFrame = 0;
+  int endFrame = 0;
+  std::vector<BakedFrame> frames;
+ };
+ std::vector<std::unique_ptr<BakedAnimation>> bakedAnimations_;
+ const BakedFrame* currentBakedFrame_ = nullptr;
  HRESULT CheckNode(ufbx_node* node, const std::string& directory);
 public:
  Fbx();
@@ -29,6 +41,7 @@ public:
  virtual HRESULT Load(std::string fileName);
  void Draw(Transform& transform, int frame);
  bool Evaluate(int frame);
+ bool BakeAnimation(int startFrame, int endFrame);
  bool SetAnimation(const std::string& name);
  void Release();
  XMFLOAT3 GetBonePosition(std::string boneName);

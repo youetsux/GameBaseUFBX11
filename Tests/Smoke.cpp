@@ -134,7 +134,11 @@ static void TestCrowdScene() {
   check(model != nullptr, "crowd model handle is valid");
   if (!model) continue;
   if (!sharedModel) sharedModel = model->pFbx;
-  check(model->pFbx == sharedModel, "200 instances share one Fbx");
+  check(model->pFbx == sharedModel, "crowd instances share one Fbx");
+  check(model->startFrame == 0 && model->endFrame == 152 && model->animSpeed == 1.0f,
+        "staggering preserves full loop range and speed");
+  check(model->nowFrame == static_cast<float>(index % 153),
+        "crowd current frames are staggered by one frame");
   const XMFLOAT3 position = model->transform.position_;
   for (size_t previous = 0; previous < index; ++previous) {
    const XMFLOAT3 other = Model::_datas[previous]->transform.position_;
@@ -173,6 +177,10 @@ static void TestCrowdScene() {
   Direct3D::pContext_->End(singleQuery.Get());
   Direct3D::pContext_->Begin(crowdQuery.Get());
   scene.Draw();
+  for (size_t index = 0; index < Model::_datas.size(); ++index) {
+   check(Model::GetAnimFrame(static_cast<int>(index)) == static_cast<int>((index + 1) % 153),
+         "staggered playback advances and wraps over the full loop");
+  }
   Direct3D::pContext_->End(crowdQuery.Get());
   D3D11_QUERY_DATA_PIPELINE_STATISTICS single{}, crowd{};
   HRESULT singleResult=S_FALSE, crowdResult=S_FALSE;
@@ -237,6 +245,69 @@ static std::vector<BYTE> ReadDrawnVertices(int h) {
 
 }
 
+static void TestCpuBake() {
+ Model::AllRelease();
+ int a=Model::Load("Run.fbx"), b=Model::Load("Run.fbx");
+ check(a>=0 && b>=0,"CPU bake shared handles load");
+ if(a<0 || b<0) return;
+ Model::SetAnimation(a,"mixamo.com");
+ Model::SetAnimation(b,"mixamo.com");
+ Model::SetAnimFrame(a,0,50,0);
+ Model::SetAnimFrame(b,0,50,0);
+ std::string boneName;
+ ufbx_scene* source=ufbx_load_file("Run.fbx",nullptr,nullptr);
+ if(source) {
+  for(const ufbx_node* node:source->nodes) {
+   if(node->bone) {boneName.assign(node->name.data,node->name.length);break;}
+  }
+  ufbx_free_scene(source);
+ }
+ check(!boneName.empty(),"CPU bake moving bone reference exists");
+ const int frames[]={0,1,15,30,38,39};
+ std::vector<std::vector<BYTE>> reference;
+ std::vector<XMFLOAT3> bones;
+ for(int frame:frames) {
+  Model::SetCurrentFrame(a,frame);
+  reference.push_back(ReadDrawnVertices(a));
+  bones.push_back(Model::GetBonePosition(a,boneName));
+ }
+ Model::SetAnimation(a,"Take 001");
+ Model::SetCurrentFrame(a,15);
+ const auto staticTake=ReadDrawnVertices(a);
+ Model::SetAnimation(a,"mixamo.com");
+ Model::SetCurrentFrame(a,15);
+ check(!Model::BakeAnimation(-1,0,38),"CPU bake rejects invalid handle");
+ check(!Model::BakeAnimation(a,38,0),"CPU bake rejects reversed range");
+ check(Model::BakeAnimation(a,0,38),"CPU animation bake succeeds");
+ check(Model::BakeAnimation(a,0,38),"CPU bake repeated request reuses snapshots");
+ check(Model::GetAnimFrame(a)==15 && Model::_datas[a]->startFrame==0 &&
+       Model::_datas[a]->endFrame==50 && Model::_datas[a]->animSpeed==0,
+       "CPU bake preserves playback position, range and speed");
+ for(size_t index=0;index<sizeof(frames)/sizeof(frames[0]);++index) {
+  Model::SetCurrentFrame(a,frames[index]);
+  check(ReadDrawnVertices(a)==reference[index],"baked GPU vertices equal live evaluation, including fallback");
+  const XMFLOAT3 actual=Model::GetBonePosition(a,boneName);
+  const XMFLOAT3 expected=bones[index];
+  check(actual.x==expected.x && actual.y==expected.y && actual.z==expected.z,
+        "baked bone position equals live evaluation");
+  Model::SetCurrentFrame(b,1);
+  check(ReadDrawnVertices(b)==reference[1],"shared baked handles retain independent frames");
+ }
+ Model::SetAnimation(a,"Take 001");
+ Model::SetCurrentFrame(a,15);
+ check(ReadDrawnVertices(a)==staticTake,"unbaked clip uses original evaluation");
+ check(Model::BakeAnimation(a,0,38),"second clip can be baked independently");
+ check(ReadDrawnVertices(a)==staticTake,"second clip snapshot retains its own pose");
+ Model::SetAnimation(a,"mixamo.com");
+ check(ReadDrawnVertices(a)==reference[2],"switching back restores moving clip snapshot");
+ Model::Release(a);
+ Model::SetCurrentFrame(b,30);
+ check(ReadDrawnVertices(b)==reference[3],"baked data survives original handle release");
+ Model::AllRelease();
+ Model::AllRelease();
+ puts("CPU BAKE: live/baked vertices, bones, clips, fallback and shared lifetime verified");
+}
+
 int main(int argc,char** argv) {
  if(argc<2) return 2;
  const bool hardware = std::getenv("UFBX_TEST_HARDWARE") != nullptr;
@@ -298,6 +369,7 @@ int main(int argc,char** argv) {
   Fbx model;
   check(FAILED(model.Load("__missing__.fbx")),"missing FBX handled");
   check(SUCCEEDED(model.Load(argv[file])),"FBX load");
+  check(model.BakeAnimation(0,30),"fixture CPU animation bake");
   ufbx_load_opts opts{};opts.evaluate_skinning=true;opts.generate_missing_normals=true;
   opts.target_axes=ufbx_axes_left_handed_y_up;
   opts.handedness_conversion_axis=UFBX_MIRROR_AXIS_Z;
@@ -503,6 +575,7 @@ int main(int argc,char** argv) {
   check(!Model::SetAnimation(-1,"mixamo.com"),"invalid animation handle rejected");
   Model::AllRelease();
  }
+ TestCpuBake();
  TestCrowdScene();
  TestObjectOwnership();
  TestImageOwnership();

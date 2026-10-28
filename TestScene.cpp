@@ -3,9 +3,12 @@
 #include "Engine/Camera.h"
 
 namespace {
-    const int ModelColumns = 50;
-    const int ModelRows = 50;
+    const int ModelColumns = 20;
+    const int ModelRows = 20;
     const float ModelSpacing = 1.0f;
+    const int AnimationStartFrame = 0;
+    const int AnimationEndFrame = 152;
+    const int AnimationFrameOffsetStep = 1;
     const float CameraMoveSeconds = 30.0f;
     const float CameraEndDistanceRatio = 0.15f;
     const char* ModelFilename = "skg.fbx";
@@ -33,13 +36,25 @@ void TestScene::Initialize()
                 return;
             }
 
+            // Bake once; all later handles share this FBX and its CPU snapshots.
+            if (modelHandles_.empty() &&
+                !Model::BakeAnimation(handle, AnimationStartFrame, AnimationEndFrame)) {
+                OutputDebugStringA("Crowd test: animation bake failed.\n");
+                Model::Release(handle);
+                return;
+            }
+
             Transform transform;
             transform.position_.x = column * ModelSpacing - halfWidth;
             transform.position_.z = row * ModelSpacing - halfDepth;
             Model::SetTransform(handle, transform);
 
-            // �S���𓯂������ōĐ����A���ʂ̎p����g���đS����`�悷��B
-            Model::SetAnimFrame(handle, 0, 152, 1.0f);
+            // Keep the loop range shared, but start each character one frame later.
+            Model::SetAnimFrame(handle, AnimationStartFrame, AnimationEndFrame, 1.0f);
+            const int modelIndex = row * ModelColumns + column;
+            const int animationFrameCount = AnimationEndFrame - AnimationStartFrame + 1;
+            const int frameOffset = (modelIndex * AnimationFrameOffsetStep) % animationFrameCount;
+            Model::SetCurrentFrame(handle, AnimationStartFrame + frameOffset);
             modelHandles_.push_back(handle);
         }
     }

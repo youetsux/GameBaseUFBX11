@@ -61,6 +61,8 @@ Fbx::~Fbx() {
 }
 void Fbx::Release() {
     parts_.clear();
+    currentBakedFrame_ = nullptr;
+    bakedAnimations_.clear();
     if (evaluated_) {
         ufbx_free_scene(evaluated_);
         evaluated_ = nullptr;
@@ -133,6 +135,22 @@ bool Fbx::Evaluate(int frame) {
     if (hasEvaluatedFrame_ && evaluatedFrame_ == frame) {
         return true;
     }
+    for (const std::unique_ptr<BakedAnimation>& animation : bakedAnimations_) {
+        if (animation->selection != selectedAnim_ ||
+            frame < animation->startFrame || frame > animation->endFrame) {
+            continue;
+        }
+        const size_t frameIndex = static_cast<size_t>(
+            static_cast<int64_t>(frame) - animation->startFrame);
+        currentBakedFrame_ = &animation->frames[frameIndex];
+        for (size_t partIndex = 0; partIndex < parts_.size(); ++partIndex) {
+            parts_[partIndex]->ApplyVertices(currentBakedFrame_->parts[partIndex],
+                currentBakedFrame_->nodePositions);
+        }
+        evaluatedFrame_ = frame;
+        hasEvaluatedFrame_ = true;
+        return true;
+    }
     // Frame numbers remain absolute FBX timeline frames, as in the original API.
     const ufbx_anim* anim = selectedAnim_;
     if (anim == nullptr) {
@@ -149,6 +167,7 @@ bool Fbx::Evaluate(int frame) {
         ufbx_free_scene(evaluated_);
     }
     evaluated_ = next;
+    currentBakedFrame_ = nullptr;
     evaluatedFrame_ = frame;
     hasEvaluatedFrame_ = true;
     for (const std::unique_ptr<FbxParts>& part : parts_) {
@@ -156,6 +175,62 @@ bool Fbx::Evaluate(int frame) {
     }
     return true;
 }
+bool Fbx::BakeAnimation(int startFrame, int endFrame) {
+    if (!scene_ || endFrame < startFrame) {
+        return false;
+    }
+    for (const std::unique_ptr<BakedAnimation>& cached : bakedAnimations_) {
+        if (cached->selection == selectedAnim_ && cached->startFrame == startFrame &&
+            cached->endFrame == endFrame) {
+            return true;
+        }
+    }
+    const int restoreFrame = evaluatedFrame_;
+    const ufbx_anim* animation = selectedAnim_;
+    if (!animation) {
+        animation = SelectAnimation(scene_);
+    }
+    std::unique_ptr<BakedAnimation> baked = std::make_unique<BakedAnimation>();
+    baked->selection = selectedAnim_;
+    baked->startFrame = startFrame;
+    baked->endFrame = endFrame;
+    const size_t frameCount = static_cast<size_t>(
+        static_cast<int64_t>(endFrame) - startFrame + 1);
+    baked->frames.resize(frameCount);
+    for (size_t frameIndex = 0; frameIndex < frameCount; ++frameIndex) {
+        const int frame = static_cast<int>(static_cast<int64_t>(startFrame) + frameIndex);
+        ufbx_evaluate_opts options{};
+        options.evaluate_skinning = true;
+        const double time = static_cast<double>(frame) / fps_;
+        std::unique_ptr<ufbx_scene, decltype(&ufbx_free_scene)> evaluated(
+            ufbx_evaluate_scene(scene_, animation, time, &options, nullptr), ufbx_free_scene);
+        if (!evaluated) {
+            hasEvaluatedFrame_ = false;
+            Evaluate(restoreFrame);
+            return false;
+        }
+        BakedFrame& snapshot = baked->frames[frameIndex];
+        snapshot.parts.resize(parts_.size());
+        for (size_t partIndex = 0; partIndex < parts_.size(); ++partIndex) {
+            if (!parts_[partIndex]->CaptureVertices(evaluated.get(), &snapshot.parts[partIndex])) {
+                hasEvaluatedFrame_ = false;
+                Evaluate(restoreFrame);
+                return false;
+            }
+        }
+        snapshot.nodePositions.resize(scene_->nodes.count);
+        for (const ufbx_node* node : evaluated->nodes) {
+            snapshot.nodePositions[node->typed_id] = XMFLOAT3(
+                static_cast<float>(node->node_to_world.m03),
+                static_cast<float>(node->node_to_world.m13),
+                static_cast<float>(node->node_to_world.m23));
+        }
+    }
+    bakedAnimations_.push_back(std::move(baked));
+    hasEvaluatedFrame_ = false;
+    return Evaluate(restoreFrame);
+}
+
 void Fbx::Draw(Transform& transform, int frame) {
     if (!Evaluate(frame)) {
         return;
@@ -166,6 +241,14 @@ void Fbx::Draw(Transform& transform, int frame) {
     }
 }
 XMFLOAT3 Fbx::GetBonePosition(std::string boneName) {
+    if (currentBakedFrame_ && scene_) {
+        for (const ufbx_node* node : scene_->nodes) {
+            if (boneName == std::string(node->name.data, node->name.length)) {
+                return currentBakedFrame_->nodePositions[node->typed_id];
+            }
+        }
+        return XMFLOAT3(0, 0, 0);
+    }
     const ufbx_scene* current = scene_;
     if (evaluated_ != nullptr) {
         current = evaluated_;

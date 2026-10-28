@@ -97,6 +97,33 @@ namespace Model
 	}
 
 
+    // Bake the selected animation once for all shared handles.
+    bool BakeAnimation(int handle, int startFrame, int endFrame)
+    {
+        if (handle < 0 || handle >= static_cast<int>(_datas.size()) || !_datas[handle]) {
+            return false;
+        }
+        ModelData& model = *_datas[handle];
+        if (!model.pFbx || !model.pFbx->SetAnimation(model.animationName)) {
+            return false;
+        }
+        return model.pFbx->BakeAnimation(startFrame, endFrame);
+    }
+
+    // Change the playback position without changing its loop range.
+    bool SetCurrentFrame(int handle, int frame)
+    {
+        if (handle < 0 || handle >= static_cast<int>(_datas.size()) || !_datas[handle]) {
+            return false;
+        }
+        ModelData& model = *_datas[handle];
+        if (frame < model.startFrame || frame > model.endFrame) {
+            return false;
+        }
+        model.nowFrame = static_cast<float>(frame);
+        return true;
+    }
+
 	//現在のアニメーションのフレームを取得
 	int GetAnimFrame(int handle)
 	{
