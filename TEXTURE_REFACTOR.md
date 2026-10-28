@@ -52,3 +52,16 @@ WARPおよび実GPUで既存回帰テストがPASSしています。
 従来のボーン名重複時の曖昧さは今回の対象外です。ゲーム画面の目視確認は未実施です。
 
 整理後の検証: Debug/Release × x64/x86の全4構成ビルド成功。WARP・実GPUテストともPASS。skg.fbxは読み込み直後122.72MiB、600回評価後123.37MiB。
+
+## 最新の保持方式: Clearによる明示的なキャッシュ解放
+TextureManagerはCachedTexture::textureをshared_ptrで保持します。
+weak_ptr・期限切れ検査・期限切れ項目削除は廃止しました。
+モデルを解放しても同じ画像を再利用でき、TextureManager::Clear()で管理表の所有権を解放します。
+Clear時に画像を使う材質が残っていれば、その材質が解放されるまで画像は有効です。
+シーン切り替え時はSceneManager::Update、終了時はMainの資源解放後・Direct3D解放前にClearを呼びます。
+Model::AllRelease単体ではキャッシュを消しません。ゲームの終了処理以外で資源をまとめて消す場合は、TextureManager::Clearを明示的に呼んでください。
+同じデバイス・正規化した同じパスの画像を共有する動作は維持しています。
+現在の方式はこの節を優先し、過去のweak_ptr方式の記述は変更履歴として扱ってください。
+WARPと実GPUで、外部所有者がいなくなった後の再利用・Clearによる解放・Clear時に使用中の画像の存続・Clearの繰り返しを検査しPASSしています。
+
+保持方式更新後もDebug/Release × x64/x86の全4構成でビルド成功。skg.fbxの600回評価後は約123MiBです。ゲーム画面の目視確認は未実施です。

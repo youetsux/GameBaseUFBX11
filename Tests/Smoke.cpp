@@ -1,6 +1,10 @@
 ﻿#define NOMINMAX
 #include "Fbx.h"
 #include "Model.h"
+#include "Image.h"
+#include "GameObject.h"
+#include "VFX.h"
+#include "../TestScene.h"
 #include "Direct3D.h"
 #include "Camera.h"
 #include "Texture.h"
@@ -13,11 +17,186 @@
 #include <algorithm>
 #include <cfloat>
 using Microsoft::WRL::ComPtr;
-namespace Model { extern std::vector<ModelData*> _datas; }
+namespace Model { extern std::vector<std::unique_ptr<ModelData>> _datas; }
 namespace Direct3D { extern ID3D11BlendState* pBlendState[BLEND_MAX]; }
+namespace Image { extern std::vector<std::unique_ptr<ImageData>> _datas; }
+namespace VFX {
+ extern std::list<std::unique_ptr<Emitter>> emitterList_;
+ extern std::list<std::unique_ptr<Particle>> particleList_;
+}
 struct Triangle { XMFLOAT3 p[3]; };
 static int failures=0;
 static void check(bool ok,const char* text) { if(!ok){printf("FAIL: %s\n",text);++failures;} }
+class LifetimeObject : public GameObject {
+public:
+ static int released;
+ static int destroyed;
+ explicit LifetimeObject(GameObject* parent) : GameObject(parent) {}
+ ~LifetimeObject() override { ++destroyed; }
+ void Initialize() override {}
+ void Update() override {}
+ void Draw() override {}
+ void Release() override { ++released; }
+};
+int LifetimeObject::released = 0;
+int LifetimeObject::destroyed = 0;
+
+class LifetimeCollider : public Collider {
+public:
+ static int destroyed;
+ ~LifetimeCollider() override { ++destroyed; }
+ bool IsHit(Collider*) override { return false; }
+};
+int LifetimeCollider::destroyed = 0;
+
+static void TestObjectOwnership() {
+ LifetimeObject::released = 0;
+ LifetimeObject::destroyed = 0;
+ LifetimeCollider::destroyed = 0;
+ {
+  std::unique_ptr<LifetimeObject> root = std::make_unique<LifetimeObject>(nullptr);
+  LifetimeObject* child = Instantiate<LifetimeObject>(root.get());
+  Instantiate<LifetimeObject>(child);
+  child->AddCollider(std::make_unique<LifetimeCollider>());
+  check(root->GetChildList()->size() == 1, "parent owns child");
+  child->KillMe();
+  root->UpdateSub();
+  check(root->GetChildList()->empty(), "dead child erased");
+  check(LifetimeObject::released == 2 && LifetimeObject::destroyed == 2,
+        "child and grandchild released and destroyed once");
+  check(LifetimeCollider::destroyed == 1, "child collider destroyed once");
+  LifetimeObject* replacement = Instantiate<LifetimeObject>(root.get());
+  Instantiate<LifetimeObject>(replacement);
+  root->KillAllChildren();
+  check(LifetimeObject::released == 4 && LifetimeObject::destroyed == 4,
+        "kill children recursively owns cleanup");
+  Instantiate<LifetimeObject>(root.get());
+  root->ReleaseSub();
+  check(root->GetChildList()->empty(), "release empties child ownership list");
+ }
+ check(LifetimeObject::released == 6 && LifetimeObject::destroyed == 6,
+       "root and children destroyed without double delete");
+}
+
+static void TestImageOwnership() {
+ int first = Image::Load("char.png");
+ int second = Image::Load("char.png");
+ check(first >= 0 && second >= 0, "image handles load");
+ if (first >= 0 && second >= 0) {
+  std::weak_ptr<Sprite> lifetime = Image::_datas[first]->pSprite;
+  check(Image::_datas[first]->pSprite == Image::_datas[second]->pSprite,
+        "image handles share sprite");
+  Image::Release(first);
+  check(!lifetime.expired(), "sprite survives releasing first handle");
+  int reused = Image::Load("char.png");
+  check(reused == first, "image handle slot reused");
+  check(Image::_datas[reused]->rect.right > 0, "reused image handle has initialized rect");
+  Image::Release(second);
+  Image::Release(reused);
+  check(lifetime.expired(), "last image handle destroys sprite");
+  Image::Release(reused);
+ }
+ check(Image::Load("__missing_image__.png") == -1, "failed sprite load cleans up");
+ Image::AllRelease();
+}
+
+static void TestParticleOwnership() {
+ VFX::Release();
+ EmitterData data;
+ data.lifeTime = 1;
+ data.delay = 0;
+ data.number = 2;
+ VFX::Start(data);
+ VFX::Update();
+ check(VFX::particleList_.size() == 2, "emitter owns two live particles");
+ VFX::Update();
+ VFX::Update();
+ check(VFX::particleList_.empty() && VFX::emitterList_.empty(),
+       "particles expire before emitter destruction");
+ VFX::Start(data);
+ VFX::Update();
+ VFX::Release();
+ VFX::Release();
+ check(VFX::particleList_.empty() && VFX::emitterList_.empty(),
+       "particle bulk release is safe to repeat");
+}
+
+static void TestCrowdScene() {
+ Model::AllRelease();
+ TestScene scene(nullptr);
+ scene.Initialize();
+ const size_t instanceCount = Model::_datas.size();
+ check(instanceCount > 0, "crowd creates model handles");
+ size_t visibleRoots = 0;
+ std::shared_ptr<Fbx> sharedModel;
+ for (size_t index = 0; index < Model::_datas.size(); ++index) {
+  const std::unique_ptr<Model::ModelData>& model = Model::_datas[index];
+  check(model != nullptr, "crowd model handle is valid");
+  if (!model) continue;
+  if (!sharedModel) sharedModel = model->pFbx;
+  check(model->pFbx == sharedModel, "200 instances share one Fbx");
+  const XMFLOAT3 position = model->transform.position_;
+  for (size_t previous = 0; previous < index; ++previous) {
+   const XMFLOAT3 other = Model::_datas[previous]->transform.position_;
+   check(position.x != other.x || position.z != other.z, "crowd positions are distinct");
+  }
+  XMVECTOR screen = XMVector3Project(XMLoadFloat3(&position),0,0,256,256,0,1,
+      Camera::GetProjectionMatrix(),Camera::GetViewMatrix(),XMMatrixIdentity());
+  if (XMVectorGetX(screen)>0 && XMVectorGetX(screen)<256 &&
+      XMVectorGetY(screen)>0 && XMVectorGetY(screen)<256 &&
+      XMVectorGetZ(screen)>0 && XMVectorGetZ(screen)<1) {
+   ++visibleRoots;
+  }
+ }
+
+ check(visibleRoots > 0, "crowd camera sees model roots");
+ const XMFLOAT3 startPosition = Camera::GetPosition();
+ const XMFLOAT3 target = Camera::GetTarget();
+ Sleep(30);
+ scene.Update();
+ const XMFLOAT3 movedPosition = Camera::GetPosition();
+ const XMVECTOR startOffset = XMLoadFloat3(&startPosition) - XMLoadFloat3(&target);
+ const XMVECTOR movedOffset = XMLoadFloat3(&movedPosition) - XMLoadFloat3(&target);
+ check(XMVectorGetX(XMVector3Length(movedOffset)) < XMVectorGetX(XMVector3Length(startOffset)),
+       "camera moves closer to its target over time");
+ check(movedPosition.z < target.z, "camera stays before target");
+ Camera::Update();
+ D3D11_QUERY_DESC description{};
+ description.Query = D3D11_QUERY_PIPELINE_STATISTICS;
+ ComPtr<ID3D11Query> singleQuery, crowdQuery;
+ check(SUCCEEDED(Direct3D::pDevice_->CreateQuery(&description,&singleQuery)), "single draw statistics query");
+ check(SUCCEEDED(Direct3D::pDevice_->CreateQuery(&description,&crowdQuery)), "crowd statistics query");
+ if (singleQuery && crowdQuery && sharedModel) {
+  Transform transform;
+  Direct3D::pContext_->Begin(singleQuery.Get());
+  sharedModel->Draw(transform,1);
+  Direct3D::pContext_->End(singleQuery.Get());
+  Direct3D::pContext_->Begin(crowdQuery.Get());
+  scene.Draw();
+  Direct3D::pContext_->End(crowdQuery.Get());
+  D3D11_QUERY_DATA_PIPELINE_STATISTICS single{}, crowd{};
+  HRESULT singleResult=S_FALSE, crowdResult=S_FALSE;
+  const ULONGLONG deadline=GetTickCount64()+10000;
+  while ((singleResult==S_FALSE || crowdResult==S_FALSE) && GetTickCount64()<deadline) {
+   singleResult=Direct3D::pContext_->GetData(singleQuery.Get(),&single,sizeof(single),0);
+   crowdResult=Direct3D::pContext_->GetData(crowdQuery.Get(),&crowd,sizeof(crowd),0);
+   if(singleResult==S_FALSE || crowdResult==S_FALSE) Sleep(1);
+  }
+  check(singleResult==S_OK && crowdResult==S_OK,"crowd GPU statistics complete");
+  check(single.IAPrimitives>0 && crowd.IAPrimitives==single.IAPrimitives*instanceCount,
+        "GPU receives configured instance count of triangles");
+  check(crowd.PSInvocations>0,"crowd rasterization produces pixel shader work");
+  printf("CROWD instances=%zu single_triangles=%llu crowd_triangles=%llu pixel_shader_invocations=%llu\n",
+      instanceCount,single.IAPrimitives,crowd.IAPrimitives,crowd.PSInvocations);
+ }
+ scene.Release();
+ scene.Release();
+ for (const std::unique_ptr<Model::ModelData>& model : Model::_datas) {
+  check(!model,"crowd releases model handles");
+ }
+ Model::AllRelease();
+}
+
 static XMFLOAT3 cv(ufbx_vec3 p) {return XMFLOAT3((float)p.x,(float)p.y,(float)p.z);}
 static std::vector<Triangle> triangles(ufbx_scene* scene) {
  std::vector<Triangle> result;
@@ -74,10 +253,17 @@ int main(int argc,char** argv) {
   first.reset();
   check(!lifetime.expired(), "shared texture survives first owner release");
   alias.reset();
-  check(lifetime.expired(), "last owner releases cached texture");
+  check(!lifetime.expired(), "cache retains texture without material owners");
+  auto cachedAgain = TextureManager::Load("char.png");
+  check(cachedAgain == lifetime.lock(), "cache reuses texture after owners release");
+  TextureManager::Clear();
+  check(!lifetime.expired(), "clear keeps externally owned texture alive");
+  cachedAgain.reset();
+  check(lifetime.expired(), "clear and last external release destroy texture");
+  TextureManager::Clear();
   check(!TextureManager::Load("__missing_texture__.png"), "missing shared texture handled");
   auto reloaded = TextureManager::Load("char.png");
-  check(reloaded && reloaded->GetSRV(), "texture reload after last owner release");
+  check(reloaded && reloaded->GetSRV(), "texture reload after explicit cache clear");
  }
  printf("D3D11 %s debug layer: %s\n",hardware?"HARDWARE":"WARP",flags?"enabled":"unavailable");
  ComPtr<ID3D11InfoQueue> info; Direct3D::pDevice_->QueryInterface(IID_PPV_ARGS(&info));
@@ -317,6 +503,10 @@ int main(int argc,char** argv) {
   check(!Model::SetAnimation(-1,"mixamo.com"),"invalid animation handle rejected");
   Model::AllRelease();
  }
+ TestCrowdScene();
+ TestObjectOwnership();
+ TestImageOwnership();
+ TestParticleOwnership();
  // Shared cache survives releasing the initial handle; pose queries use each handle's frame.
  int a=Model::Load(argv[1]),b=Model::Load(argv[1]),c=Model::Load(argv[1]);
  check(a>=0&&b>=0&&c>=0,"three shared Model handles");
@@ -324,6 +514,7 @@ int main(int argc,char** argv) {
   RayCastData ray;ray.start=XMFLOAT3(0,0,-100);ray.dir=XMFLOAT3(0,0,1);Model::RayCast(b,&ray);check(ray.start.z==-100 && ray.dir.z==1,"Model ray input preserved");}
  Model::AllRelease();
  if(info)for(UINT64 i=0;i<info->GetNumStoredMessagesAllowedByRetrievalFilter();++i){SIZE_T bytes=0;info->GetMessage(i,nullptr,&bytes);std::vector<BYTE> buffer(bytes);auto* msg=(D3D11_MESSAGE*)buffer.data();info->GetMessage(i,msg,&bytes);if(msg->Severity<=D3D11_MESSAGE_SEVERITY_ERROR){printf("D3D ERROR: %s\n",msg->pDescription);++failures;}}
+ TextureManager::Clear();
  Direct3D::pContext_->ClearState();
  printf("RESULT: %s (%d failures)\n",failures?"FAIL":"PASS",failures);return failures?1:0;
 }

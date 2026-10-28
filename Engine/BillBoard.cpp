@@ -1,4 +1,4 @@
-#include "BillBoard.h"
+ï»¿#include "BillBoard.h"
 #include "Camera.h"
 #include "Global.h"
 
@@ -9,23 +9,24 @@ BillBoard::BillBoard():
 
 BillBoard::~BillBoard()
 {
+    Release();
 }
 
-//‰æ‘œ‚ğƒ[ƒh‚µ‚Äƒ|ƒŠƒSƒ“‚ğì¬
+//ç”»åƒã‚’ãƒ­ãƒ¼ãƒ‰ã—ã¦ãƒãƒªã‚´ãƒ³ã‚’ä½œæˆ
 HRESULT BillBoard::Load(std::string fileName)
 {
 	HRESULT hr;
 
-	// ’¸“_î•ñ
+	// é ‚ç‚¹æƒ…å ±
 	VERTEX vertices[] =
 	{
-		{ XMFLOAT3(-0.5f, 0.5f, 0.0f),XMFLOAT3(0.0f, 0.0f, 0.0f) },   // lŠpŒ`‚Ì’¸“_i¶ãj
-		{ XMFLOAT3(0.5f, 0.5f, 0.0f),	XMFLOAT3(1.0f, 0.0f, 0.0f) },   // lŠpŒ`‚Ì’¸“_i‰Eãj
-		{ XMFLOAT3(0.5f, -0.5f, 0.0f),	XMFLOAT3(1.0f, 1.0f, 0.0f) },   // lŠpŒ`‚Ì’¸“_i‰E‰ºj
-		{ XMFLOAT3(-0.5f, -0.5f, 0.0f),XMFLOAT3(0.0f, 1.0f, 0.0f) },   // lŠpŒ`‚Ì’¸“_i¶‰ºj
+		{ XMFLOAT3(-0.5f, 0.5f, 0.0f),XMFLOAT3(0.0f, 0.0f, 0.0f) },   // å››è§’å½¢ã®é ‚ç‚¹ï¼ˆå·¦ä¸Šï¼‰
+		{ XMFLOAT3(0.5f, 0.5f, 0.0f),	XMFLOAT3(1.0f, 0.0f, 0.0f) },   // å››è§’å½¢ã®é ‚ç‚¹ï¼ˆå³ä¸Šï¼‰
+		{ XMFLOAT3(0.5f, -0.5f, 0.0f),	XMFLOAT3(1.0f, 1.0f, 0.0f) },   // å››è§’å½¢ã®é ‚ç‚¹ï¼ˆå³ä¸‹ï¼‰
+		{ XMFLOAT3(-0.5f, -0.5f, 0.0f),XMFLOAT3(0.0f, 1.0f, 0.0f) },   // å››è§’å½¢ã®é ‚ç‚¹ï¼ˆå·¦ä¸‹ï¼‰
 	};
 
-	// ’¸“_ƒf[ƒ^—pƒoƒbƒtƒ@‚Ìİ’è
+	// é ‚ç‚¹ãƒ‡ãƒ¼ã‚¿ç”¨ãƒãƒƒãƒ•ã‚¡ã®è¨­å®š
 	D3D11_BUFFER_DESC bd_vertex;
 	bd_vertex.ByteWidth = sizeof(vertices);
 	bd_vertex.Usage = D3D11_USAGE_DEFAULT;
@@ -43,10 +44,10 @@ HRESULT BillBoard::Load(std::string fileName)
 
 
 
-	//ƒCƒ“ƒfƒbƒNƒXî•ñ
+	//ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹æƒ…å ±
 	int index[] = { 0,2,3, 0,1,2 };
 
-	// ƒCƒ“ƒfƒbƒNƒXƒoƒbƒtƒ@‚ğ¶¬‚·‚é
+	// ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹ãƒãƒƒãƒ•ã‚¡ã‚’ç”Ÿæˆã™ã‚‹
 	D3D11_BUFFER_DESC   bd;
 	bd.Usage = D3D11_USAGE_DEFAULT;
 	bd.ByteWidth = sizeof(index);
@@ -64,7 +65,7 @@ HRESULT BillBoard::Load(std::string fileName)
 		return hr;
 	}
 
-	//ƒRƒ“ƒXƒ^ƒ“ƒgƒoƒbƒtƒ@ì¬
+	//ã‚³ãƒ³ã‚¹ã‚¿ãƒ³ãƒˆãƒãƒƒãƒ•ã‚¡ä½œæˆ
 	D3D11_BUFFER_DESC cb;
 	cb.ByteWidth = sizeof(CONSTANT_BUFFER);
 	cb.Usage = D3D11_USAGE_DYNAMIC;
@@ -73,29 +74,29 @@ HRESULT BillBoard::Load(std::string fileName)
 	cb.MiscFlags = 0;
 	cb.StructureByteStride = 0;
 
-	// ƒRƒ“ƒXƒ^ƒ“ƒgƒoƒbƒtƒ@‚Ìì¬
+	// ã‚³ãƒ³ã‚¹ã‚¿ãƒ³ãƒˆãƒãƒƒãƒ•ã‚¡ã®ä½œæˆ
 	Direct3D::pDevice_->CreateBuffer(&cb, nullptr, &pConstantBuffer_);
 
 
-	//ƒeƒNƒXƒ`ƒƒ
-	pTexture_ = new Texture;
+	//ãƒ†ã‚¯ã‚¹ãƒãƒ£
+	pTexture_ = std::make_unique<Texture>();
 	pTexture_->Load(fileName.c_str());
 
 	return S_OK;
 }
 
 
-//•`‰æ
+//æç”»
 void BillBoard::Draw(XMMATRIX matWorld, XMFLOAT4 color)
 {
-	//ƒRƒ“ƒXƒ^ƒ“ƒgƒoƒbƒtƒ@‚É“n‚·î•ñ
+	//ã‚³ãƒ³ã‚¹ã‚¿ãƒ³ãƒˆãƒãƒƒãƒ•ã‚¡ã«æ¸¡ã™æƒ…å ±
 	CONSTANT_BUFFER cb;
 	cb.matWVP = XMMatrixTranspose(matWorld * Camera::GetViewMatrix() * Camera::GetProjectionMatrix());
 	cb.color = color;
 
 	D3D11_MAPPED_SUBRESOURCE pdata;
-	Direct3D::pContext_->Map(pConstantBuffer_, 0, D3D11_MAP_WRITE_DISCARD, 0, &pdata);	// GPU‚©‚ç‚Ìƒf[ƒ^ƒAƒNƒZƒX‚ğ~‚ß‚é
-	memcpy_s(pdata.pData, pdata.RowPitch, (void*)(&cb), sizeof(cb));	// ƒf[ƒ^‚ğ’l‚ğ‘—‚é
+	Direct3D::pContext_->Map(pConstantBuffer_, 0, D3D11_MAP_WRITE_DISCARD, 0, &pdata);	// GPUã‹ã‚‰ã®ãƒ‡ãƒ¼ã‚¿ã‚¢ã‚¯ã‚»ã‚¹ã‚’æ­¢ã‚ã‚‹
+	memcpy_s(pdata.pData, pdata.RowPitch, (void*)(&cb), sizeof(cb));	// ãƒ‡ãƒ¼ã‚¿ã‚’å€¤ã‚’é€ã‚‹
 
 	ID3D11SamplerState* pSampler = pTexture_->GetSampler();
 	Direct3D::pContext_->PSSetSamplers(0, 1, &pSampler);
@@ -103,32 +104,32 @@ void BillBoard::Draw(XMMATRIX matWorld, XMFLOAT4 color)
 	ID3D11ShaderResourceView* pSRV = pTexture_->GetSRV();
 	Direct3D::pContext_->PSSetShaderResources(0, 1, &pSRV);
 
-	Direct3D::pContext_->Unmap(pConstantBuffer_, 0);	//ÄŠJ
+	Direct3D::pContext_->Unmap(pConstantBuffer_, 0);	//å†é–‹
 
 
 
-	//’¸“_ƒoƒbƒtƒ@
+	//é ‚ç‚¹ãƒãƒƒãƒ•ã‚¡
 	UINT stride = sizeof(VERTEX);
 	UINT offset = 0;
 	Direct3D::pContext_->IASetVertexBuffers(0, 1, &pVertexBuffer_, &stride, &offset);
 
-	// ƒCƒ“ƒfƒbƒNƒXƒoƒbƒtƒ@[‚ğƒZƒbƒg
+	// ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹ãƒãƒƒãƒ•ã‚¡ãƒ¼ã‚’ã‚»ãƒƒãƒˆ
 	stride = sizeof(int);
 	offset = 0;
 	Direct3D::pContext_->IASetIndexBuffer(pIndexBuffer_, DXGI_FORMAT_R32_UINT, 0);
 
-	//ƒRƒ“ƒXƒ^ƒ“ƒgƒoƒbƒtƒ@
-	Direct3D::pContext_->VSSetConstantBuffers(0, 1, &pConstantBuffer_);	//’¸“_ƒVƒF[ƒ_[—p	
-	Direct3D::pContext_->PSSetConstantBuffers(0, 1, &pConstantBuffer_);	//ƒsƒNƒZƒ‹ƒVƒF[ƒ_[—p
+	//ã‚³ãƒ³ã‚¹ã‚¿ãƒ³ãƒˆãƒãƒƒãƒ•ã‚¡
+	Direct3D::pContext_->VSSetConstantBuffers(0, 1, &pConstantBuffer_);	//é ‚ç‚¹ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ç”¨	
+	Direct3D::pContext_->PSSetConstantBuffers(0, 1, &pConstantBuffer_);	//ãƒ”ã‚¯ã‚»ãƒ«ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ç”¨
 
 	Direct3D::pContext_->DrawIndexed(6, 0, 0);
 }
 
 
-//‰ğ•ú
+//è§£æ”¾
 void BillBoard::Release()
 {
-	SAFE_DELETE(pTexture_);
+	pTexture_.reset();
 	SAFE_RELEASE(pConstantBuffer_);
 	SAFE_RELEASE(pIndexBuffer_);
 	SAFE_RELEASE(pVertexBuffer_);

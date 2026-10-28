@@ -1,18 +1,19 @@
-#pragma once
+ï»¿#pragma once
+#include <memory>
 #include "Direct3D.h"
 #include "Texture.h"
 #include <DirectXMath.h>
 #include <string>
 using namespace DirectX;
 
-//ƒRƒ“ƒXƒ^ƒ“ƒgƒoƒbƒtƒ@[
+//ã‚³ãƒ³ã‚¹ã‚¿ãƒ³ãƒˆãƒãƒƒãƒ•ã‚¡ãƒ¼
 struct CONSTANT_BUFFER
 {
 	XMMATRIX	matWVP;
 	XMFLOAT4	color;
 };
 
-//’¸“_î•ñ
+//é ‚ç‚¹æƒ…å ±
 struct VERTEX
 {
 	XMFLOAT3 position;
@@ -20,29 +21,29 @@ struct VERTEX
 };
 
 
-//í‚ÉƒJƒƒ‰‚Ì•û‚ğŒü‚­lŠpŒ`ƒ|ƒŠƒSƒ“
+//å¸¸ã«ã‚«ãƒ¡ãƒ©ã®æ–¹ã‚’å‘ãå››è§’å½¢ãƒãƒªã‚´ãƒ³
 class BillBoard
 {
-	ID3D11Buffer* pVertexBuffer_;	//’¸“_ƒoƒbƒtƒ@
-	ID3D11Buffer* pIndexBuffer_;	//ƒCƒ“ƒfƒbƒNƒXƒoƒbƒtƒ@
-	ID3D11Buffer* pConstantBuffer_;	//ƒRƒ“ƒXƒ^ƒ“ƒgƒoƒbƒtƒ@
+	ID3D11Buffer* pVertexBuffer_ = nullptr;	//é ‚ç‚¹ãƒãƒƒãƒ•ã‚¡
+	ID3D11Buffer* pIndexBuffer_ = nullptr;	//ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹ãƒãƒƒãƒ•ã‚¡
+	ID3D11Buffer* pConstantBuffer_ = nullptr;	//ã‚³ãƒ³ã‚¹ã‚¿ãƒ³ãƒˆãƒãƒƒãƒ•ã‚¡
 
-	Texture* pTexture_;	//‰æ‘œ
+	std::unique_ptr<Texture> pTexture_;	//ç”»åƒ
 
 public:
 	BillBoard();
 	~BillBoard();
 
-	//ƒ[ƒh
-	//ˆø”FfileName	‰æ‘œƒtƒ@ƒCƒ‹–¼
-	//–ß’lF¬Œ÷/¸”s
+	//ãƒ­ãƒ¼ãƒ‰
+	//å¼•æ•°ï¼šfileName	ç”»åƒãƒ•ã‚¡ã‚¤ãƒ«å
+	//æˆ»å€¤ï¼šæˆåŠŸ/å¤±æ•—
 	HRESULT Load(std::string fileName);
 
-	//•`‰æ
-	//ˆø”Fmatrix	•ÏŠ·s—ñiƒ[ƒ‹ƒhs—ñj
-	//ˆø”Fcolor	F
+	//æç”»
+	//å¼•æ•°ï¼šmatrix	å¤‰æ›è¡Œåˆ—ï¼ˆãƒ¯ãƒ¼ãƒ«ãƒ‰è¡Œåˆ—ï¼‰
+	//å¼•æ•°ï¼šcolor	è‰²
 	void Draw(XMMATRIX matWorld, XMFLOAT4 color);
 
-	//‰ğ•ú
+	//è§£æ”¾
 	void Release();
 };

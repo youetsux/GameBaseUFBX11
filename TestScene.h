@@ -1,23 +1,19 @@
-#pragma once
+ï»¿#pragma once
 #include "Engine/GameObject.h"
+#include <vector>
 
-//ƒeƒXƒgƒV[ƒ“‚ğŠÇ—‚·‚éƒNƒ‰ƒX
 class TestScene : public GameObject
 {
 public:
-	//ƒRƒ“ƒXƒgƒ‰ƒNƒ^
-	//ˆø”Fparent  eƒIƒuƒWƒFƒNƒgiSceneManagerj
-	TestScene(GameObject* parent);
+    TestScene(GameObject* parent);
+    void Initialize() override;
+    void Update() override;
+    void Draw() override;
+    void Release() override;
 
-	//‰Šú‰»
-	void Initialize() override;
-
-	//XV
-	void Update() override;
-
-	//•`‰æ
-	void Draw() override;
-
-	//ŠJ•ú
-	void Release() override;
+private:
+    std::vector<int> modelHandles_;
+    XMFLOAT3 cameraStartPosition_;
+    XMFLOAT3 cameraTarget_;
+    ULONGLONG cameraStartTime_ = 0;
 };

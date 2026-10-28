@@ -1,4 +1,4 @@
-#include "Fbx.h"
+ï»¿#include "Fbx.h"
 #include "FbxParts.h"
 #include "Direct3D.h"
 #include <filesystem>
@@ -18,7 +18,7 @@ namespace {
                 return true;
             }
 
-            // ’l‚ª“¯‚¶ƒL[‚Å‚àA3ŽŸ•âŠÔ‚ÌÚü‚É‚æ‚Á‚Ä“r’†‚Å“®‚­ê‡‚ª‚ ‚éB
+            // å€¤ãŒåŒã˜ã‚­ãƒ¼ã§ã‚‚ã€3æ¬¡è£œé–“ã®æŽ¥ç·šã«ã‚ˆã£ã¦é€”ä¸­ã§å‹•ãå ´åˆãŒã‚ã‚‹ã€‚
             if (previousKey.interpolation == UFBX_INTERPOLATION_CUBIC) {
                 if (previousKey.right.dy != 0.0f || nextKey.left.dy != 0.0f) {
                     return true;
@@ -42,7 +42,7 @@ namespace {
     }
 
     const ufbx_anim* SelectAnimation(const ufbx_scene* scene) {
-        // ‹ó‚ÌƒeƒCƒN‚ðæ“ª‚Éo—Í‚·‚éFBX‚à‚ ‚é‚½‚ßA“®‚«‚Ì‚ ‚é‚à‚Ì‚ð’T‚·B
+        // ç©ºã®ãƒ†ã‚¤ã‚¯ã‚’å…ˆé ­ã«å‡ºåŠ›ã™ã‚‹FBXã‚‚ã‚ã‚‹ãŸã‚ã€å‹•ãã®ã‚ã‚‹ã‚‚ã®ã‚’æŽ¢ã™ã€‚
         for (const ufbx_anim_stack* stack : scene->anim_stacks) {
             if (HasAnimation(stack)) {
                 return stack->anim;
@@ -54,13 +54,12 @@ namespace {
         return scene->anim;
     }
 }
+Fbx::Fbx() = default;
+
 Fbx::~Fbx() {
     Release();
 }
 void Fbx::Release() {
-    for (FbxParts* part : parts_) {
-        delete part;
-    }
     parts_.clear();
     if (evaluated_) {
         ufbx_free_scene(evaluated_);
@@ -112,13 +111,12 @@ HRESULT Fbx::CheckNode(ufbx_node* node, const std::string& modelDirectory) {
         return S_OK;
     }
     if (node->mesh && node->mesh->num_triangles) {
-        FbxParts* part = new FbxParts();
+        std::unique_ptr<FbxParts> part = std::make_unique<FbxParts>();
         HRESULT result = part->Init(node, modelDirectory);
         if (FAILED(result)) {
-            delete part;
             return result;
         }
-        parts_.push_back(part);
+        parts_.push_back(std::move(part));
     }
     for (ufbx_node* child : node->children) {
         HRESULT result = CheckNode(child, modelDirectory);
@@ -153,7 +151,7 @@ bool Fbx::Evaluate(int frame) {
     evaluated_ = next;
     evaluatedFrame_ = frame;
     hasEvaluatedFrame_ = true;
-    for (FbxParts* part : parts_) {
+    for (const std::unique_ptr<FbxParts>& part : parts_) {
         part->Evaluate(evaluated_);
     }
     return true;
@@ -163,7 +161,7 @@ void Fbx::Draw(Transform& transform, int frame) {
         return;
     }
     Direct3D::SetBlendMode(Direct3D::BLEND_DEFAULT);
-    for (FbxParts* part : parts_) {
+    for (const std::unique_ptr<FbxParts>& part : parts_) {
         part->Draw(transform);
     }
 }
@@ -176,7 +174,7 @@ XMFLOAT3 Fbx::GetBonePosition(std::string boneName) {
         return XMFLOAT3(0, 0, 0);
     }
 
-    // ]—ˆ‚ÌAPI‚Æ“¯‚¶‚­AÅ‰‚ÉŒ©‚Â‚©‚Á‚½“¯–¼ƒm[ƒh‚ÌˆÊ’u‚ð•Ô‚·B
+    // å¾“æ¥ã®APIã¨åŒã˜ãã€æœ€åˆã«è¦‹ã¤ã‹ã£ãŸåŒåãƒŽãƒ¼ãƒ‰ã®ä½ç½®ã‚’è¿”ã™ã€‚
     for (const ufbx_node* node : current->nodes) {
         const std::string nodeName(node->name.data, node->name.length);
         if (boneName == nodeName) {
@@ -192,7 +190,7 @@ void Fbx::RayCast(RayCastData* data) {
         return;
     }
     data->hit = FALSE;
-    for (FbxParts* part : parts_) {
+    for (const std::unique_ptr<FbxParts>& part : parts_) {
         part->RayCast(data);
     }
 }
@@ -204,7 +202,7 @@ bool Fbx::SetAnimation(const std::string& name) {
         return false;
     }
 
-    // ‹ó•¶Žš‚ÍŽ©“®‘I‘ðB‘¶Ý‚µ‚È‚¢–¼‘O‚È‚çŒ»Ý‚Ì‘I‘ð‚ð•Ï‚¦‚È‚¢B
+    // ç©ºæ–‡å­—ã¯è‡ªå‹•é¸æŠžã€‚å­˜åœ¨ã—ãªã„åå‰ãªã‚‰ç¾åœ¨ã®é¸æŠžã‚’å¤‰ãˆãªã„ã€‚
     const ufbx_anim* next = nullptr;
     if (!name.empty()) {
         for (const ufbx_anim_stack* stack : scene_->anim_stacks) {

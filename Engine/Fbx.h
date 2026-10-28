@@ -1,8 +1,9 @@
-#pragma once
+﻿#pragma once
 #include <d3d11.h>
 #include <DirectXMath.h>
 #include <string>
 #include <vector>
+#include <memory>
 #include "Transform.h"
 #include "ufbx.h"
 using namespace DirectX;
@@ -14,7 +15,7 @@ struct RayCastData {
  XMFLOAT3 normal{};
 };
 class Fbx {
- std::vector<FbxParts*> parts_;
+ std::vector<std::unique_ptr<FbxParts>> parts_;
  ufbx_scene* scene_ = nullptr;
  ufbx_scene* evaluated_ = nullptr;
  int evaluatedFrame_ = 0;
@@ -23,7 +24,7 @@ class Fbx {
  const ufbx_anim* selectedAnim_ = nullptr;
  HRESULT CheckNode(ufbx_node* node, const std::string& directory);
 public:
- Fbx() = default;
+ Fbx();
  ~Fbx();
  virtual HRESULT Load(std::string fileName);
  void Draw(Transform& transform, int frame);

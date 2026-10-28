@@ -1,78 +1,55 @@
-#include "Global.h"
+ï»¿#include "Global.h"
 #include "Image.h"
 
-//3D‰æ‘œ‚ğŠÇ—‚·‚é
+//3Dç”»åƒã‚’ç®¡ç†ã™ã‚‹
 namespace Image
 {
-	//ƒ[ƒhÏ‚İ‚Ì‰æ‘œƒf[ƒ^ˆê——
-	std::vector<ImageData*>	_datas;
+	//ãƒ­ãƒ¼ãƒ‰æ¸ˆã¿ã®ç”»åƒãƒ‡ãƒ¼ã‚¿ä¸€è¦§
+	std::vector<std::unique_ptr<ImageData>> _datas;
 
-	//‰Šú‰»
+	//åˆæœŸåŒ–
 	void Initialize()
 	{
 		AllRelease();
 	}
 
-	//‰æ‘œ‚ğƒ[ƒh
-	int Load(std::string fileName)
-	{
-		ImageData* pData = new ImageData;
+	//ç”»åƒã‚’ãƒ­ãƒ¼ãƒ‰
+    int Load(std::string fileName)
+    {
+        std::unique_ptr<ImageData> data = std::make_unique<ImageData>();
+        data->fileName = fileName;
 
-		//ŠJ‚¢‚½ƒtƒ@ƒCƒ‹ˆê——‚©‚ç“¯‚¶ƒtƒ@ƒCƒ‹–¼‚Ì‚à‚Ì‚ª–³‚¢‚©’T‚·
-		bool isExist = false;
-		for (int i = 0; i < _datas.size(); i++)
-		{
-			//‚·‚Å‚ÉŠJ‚¢‚Ä‚¢‚éê‡
-			if (_datas[i] != nullptr && _datas[i]->fileName == fileName)
-			{
-				pData->pSprite = _datas[i]->pSprite;
-				isExist = true;
-				break;
-			}
-		}
+        // åŒã˜ãƒ•ã‚¡ã‚¤ãƒ«ã‚’ä½¿ã†ãƒãƒ³ãƒ‰ãƒ«åŒå£«ã§ã€èª­ã¿è¾¼ã¿æ¸ˆã¿ã®ãƒ‡ãƒ¼ã‚¿ã‚’å…±æœ‰ã™ã‚‹ã€‚
+        for (const std::unique_ptr<ImageData>& loaded : _datas) {
+            if (loaded != nullptr && loaded->fileName == fileName) {
+                data->pSprite = loaded->pSprite;
+                break;
+            }
+        }
+        if (data->pSprite == nullptr) {
+            data->pSprite = std::make_shared<Sprite>();
+            if (FAILED(data->pSprite->Load(fileName))) {
+                return -1;
+            }
+        }
 
-		//V‚½‚Éƒtƒ@ƒCƒ‹‚ğŠJ‚­
-		if (isExist == false)
-		{
-			pData->pSprite = new Sprite;
-			if (FAILED(pData->pSprite->Load(fileName)))
-			{
-				//ŠJ‚¯‚È‚©‚Á‚½
-				SAFE_DELETE(pData->pSprite);
-				SAFE_DELETE(pData);
-				return -1;
-			}
-
-			//–³–ŠJ‚¯‚½
-			pData->fileName = fileName;
-		}
-
-
-		//g‚Á‚Ä‚È‚¢”Ô†‚ª–³‚¢‚©’T‚·
-		for (int i = 0; i < _datas.size(); i++)
-		{
-			if (_datas[i] == nullptr)
-			{
-				_datas[i] = pData;
-				return i;
-			}
-		}
-
-		//V‚½‚É’Ç‰Á
-		_datas.push_back(pData);
-
-		//‰æ‘œ”Ô†Š„‚èU‚è
-		int handle = (int)_datas.size() - 1;
-
-		//Ø‚è”²‚«”ÍˆÍ‚ğƒŠƒZƒbƒg
-		ResetRect(handle);
-
-		return handle;
-	}
+        int handle = -1;
+        for (size_t index = 0; index < _datas.size(); ++index) {
+            if (_datas[index] == nullptr) {
+                handle = static_cast<int>(index);
+                _datas[index] = std::move(data);
+                break;
+            }
+        }
+        if (handle < 0) {
+            _datas.push_back(std::move(data));
+            handle = static_cast<int>(_datas.size()) - 1;
+        }
+        ResetRect(handle);
+        return handle;
+    }
 
 
-
-	//•`‰æ
 	void Draw(int handle)
 	{
 		if (handle < 0 || handle >= _datas.size() || _datas[handle] == nullptr)
@@ -85,49 +62,24 @@ namespace Image
 
 
 
-	//”CˆÓ‚Ì‰æ‘œ‚ğŠJ•ú
-	void Release(int handle)
-	{
-		if (handle < 0 || handle >= _datas.size())
-		{
-			return;
-		}
-
-		//“¯‚¶ƒ‚ƒfƒ‹‚ğ‘¼‚Å‚àg‚Á‚Ä‚¢‚È‚¢‚©
-		bool isExist = false;
-		for (int i = 0; i < _datas.size(); i++)
-		{
-			//‚·‚Å‚ÉŠJ‚¢‚Ä‚¢‚éê‡
-			if (_datas[i] != nullptr && i != handle && _datas[i]->pSprite == _datas[handle]->pSprite)
-			{
-				isExist = true;
-				break;
-			}
-		}
-
-		//g‚Á‚Ä‚È‚¯‚ê‚Îƒ‚ƒfƒ‹‰ğ•ú
-		if (isExist == false)
-		{
-			SAFE_DELETE(_datas[handle]->pSprite);
-		}
-
-		SAFE_DELETE(_datas[handle]);
-	}
+	//ä»»æ„ã®ç”»åƒã‚’é–‹æ”¾
+    void Release(int handle)
+    {
+        if (handle < 0 || handle >= static_cast<int>(_datas.size())) {
+            return;
+        }
+        // æœ€å¾Œã®å…±æœ‰ãƒãƒ³ãƒ‰ãƒ«ãŒæ¶ˆãˆãŸã¨ãã€èª­ã¿è¾¼ã¿æ¸ˆã¿ã®ãƒ‡ãƒ¼ã‚¿ã‚‚è§£æ”¾ã•ã‚Œã‚‹ã€‚
+        _datas[handle].reset();
+    }
 
 
-
-	//‘S‚Ä‚Ì‰æ‘œ‚ğ‰ğ•ú
-	void AllRelease()
-	{
-		for (int i = 0; i < _datas.size(); i++)
-		{
-			Release(i);
-		}
-		_datas.clear();
-	}
+    void AllRelease()
+    {
+        _datas.clear();
+    }
 
 
-	//Ø‚è”²‚«”ÍˆÍ‚Ìİ’è
+	//åˆ‡ã‚ŠæŠœãç¯„å›²ã®è¨­å®š
 	void SetRect(int handle, int x, int y, int width, int height)
 	{
 		if (handle < 0 || handle >= _datas.size())
@@ -142,7 +94,7 @@ namespace Image
 	}
 
 
-	//Ø‚è”²‚«”ÍˆÍ‚ğƒŠƒZƒbƒgi‰æ‘œ‘S‘Ì‚ğ•\¦‚·‚éj
+	//åˆ‡ã‚ŠæŠœãç¯„å›²ã‚’ãƒªã‚»ãƒƒãƒˆï¼ˆç”»åƒå…¨ä½“ã‚’è¡¨ç¤ºã™ã‚‹ï¼‰
 	void ResetRect(int handle)
 	{
 		if (handle < 0 || handle >= _datas.size())
@@ -159,7 +111,7 @@ namespace Image
 
 	}
 
-	//ƒAƒ‹ƒtƒ@’lİ’è
+	//ã‚¢ãƒ«ãƒ•ã‚¡å€¤è¨­å®š
 	void SetAlpha(int handle, int alpha)
 	{
 		if (handle < 0 || handle >= _datas.size())
@@ -170,7 +122,7 @@ namespace Image
 	}
 
 
-	//ƒ[ƒ‹ƒhs—ñ‚ğİ’è
+	//ãƒ¯ãƒ¼ãƒ«ãƒ‰è¡Œåˆ—ã‚’è¨­å®š
 	void SetTransform(int handle, Transform& transform)
 	{
 		if (handle < 0 || handle >= _datas.size())
@@ -182,7 +134,7 @@ namespace Image
 	}
 
 
-	//ƒ[ƒ‹ƒhs—ñ‚Ìæ“¾
+	//ãƒ¯ãƒ¼ãƒ«ãƒ‰è¡Œåˆ—ã®å–å¾—
 	XMMATRIX GetMatrix(int handle)
 	{
 		if (handle < 0 || handle >= _datas.size())

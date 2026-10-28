@@ -1,31 +1,18 @@
-ï»¿#include "TextureManager.h"
+#include "TextureManager.h"
 #include "Direct3D.h"
 #include <vector>
 
 namespace {
-    namespace fs = std::filesystem;
+
 
     struct CachedTexture {
         ID3D11Device* device = nullptr;
         std::wstring path;
-        std::weak_ptr<Texture> texture;
+        std::shared_ptr<Texture> texture;
     };
 
-    // weak_ptrã¯ç”»åƒã‚’æ‰€æœ‰ã—ãªã„ã€‚æè³ªãªã©ã®æœ€å¾Œã®åˆ©ç”¨è€…ãŒç”»åƒã‚’è§£æ”¾ã™ã‚‹ã€‚
-    // ãƒ‡ãƒã‚¤ã‚¹ã‚‚æ‰€æœ‰ã›ãšã€ä½¿ç”¨æ¸ˆã¿ã®é …ç›®ã¯æ¬¡ã®Loadæ™‚ã«å–ã‚Šé™¤ãã€‚
+    // “Ç‚İ‚ñ‚¾‰æ‘œ‚ÍAClear()‚ªŒÄ‚Î‚ê‚é‚Ü‚ÅŠÇ—•\‚Å•Û‚·‚éB
     std::vector<CachedTexture> textureCache;
-
-    void RemoveExpiredTextures() {
-        size_t index = 0;
-        while (index < textureCache.size()) {
-            if (textureCache[index].texture.expired()) {
-                textureCache.erase(textureCache.begin() + index);
-                // å¾Œã‚ã®é …ç›®ãŒè©°ã¾ã‚‹ãŸã‚ã€å‰Šé™¤ã—ãŸã¨ãã¯indexã‚’é€²ã‚ãªã„ã€‚
-            } else {
-                ++index;
-            }
-        }
-    }
 
     std::shared_ptr<Texture> FindTexture(const std::wstring& path) {
         for (const CachedTexture& entry : textureCache) {
@@ -35,13 +22,18 @@ namespace {
             if (entry.path != path) {
                 continue;
             }
-            return entry.texture.lock();
+            return entry.texture;
         }
         return nullptr;
     }
 }
 
 namespace TextureManager {
+    void Clear() {
+        // g—p’†‚ÌŞ¿‚ª‚ ‚ê‚ÎA‚»‚ÌŞ¿‚Ìshared_ptr‚É‚æ‚Á‚Ä‰æ‘œ‚Í‘¶‘±‚·‚éB
+        textureCache.clear();
+    }
+
     std::shared_ptr<Texture> Load(const std::filesystem::path& path) {
         if (Direct3D::pDevice_ == nullptr || path.empty()) {
             return nullptr;
@@ -54,17 +46,17 @@ namespace TextureManager {
         }
         fullPath = fullPath.lexically_normal();
 
-        // Windowsä¸Šã§ã€å¤§æ–‡å­—å°æ–‡å­—ã ã‘ãŒç•°ãªã‚‹ãƒ‘ã‚¹ã‚‚åŒã˜ç”»åƒã¨ã—ã¦æ‰±ã†ã€‚
+        // Windowsã‚ÅA‘å•¶š¬•¶š‚¾‚¯‚ªˆÙ‚È‚éƒpƒX‚à“¯‚¶‰æ‘œ‚Æ‚µ‚Äˆµ‚¤B
         std::wstring cachePath = fullPath.native();
         CharLowerBuffW(cachePath.data(), static_cast<DWORD>(cachePath.size()));
 
-        RemoveExpiredTextures();
+
         std::shared_ptr<Texture> texture = FindTexture(cachePath);
         if (texture != nullptr) {
             return texture;
         }
 
-        // æœªç™»éŒ²ã®ç”»åƒã ã‘ã€å¾“æ¥ã®Texture APIã§èª­ã¿è¾¼ã‚€ã€‚
+        // –¢“o˜^‚Ì‰æ‘œ‚¾‚¯A]—ˆ‚ÌTexture API‚Å“Ç‚İ‚ŞB
         texture = std::make_shared<Texture>();
         const HRESULT result = texture->Load(fullPath.string());
         if (FAILED(result)) {
@@ -79,3 +71,4 @@ namespace TextureManager {
         return texture;
     }
 }
+
