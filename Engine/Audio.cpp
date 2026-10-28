@@ -1,4 +1,5 @@
 ﻿#include <xaudio2.h>
+#include <wrl/client.h>
 #include <vector>
 #include "Audio.h"
 
@@ -7,7 +8,8 @@
 namespace Audio
 {
 	//XAudio本体
-	IXAudio2* pXAudio = nullptr;
+	Microsoft::WRL::ComPtr<IXAudio2> pXAudio;
+	bool ownsComInitialization = false;
 
 	//マスターボイス
 	IXAudio2MasteringVoice* pMasteringVoice = nullptr;
@@ -34,11 +36,26 @@ namespace Audio
 //初期化
 void Audio::Initialize()
 {
-	CoInitializeEx(0, COINIT_MULTITHREADED);
-
-	XAudio2Create(&pXAudio);
-	pXAudio->CreateMasteringVoice(&pMasteringVoice);
-
+	// The audio engine survives scene changes; voices are released separately.
+	if (pXAudio != nullptr)
+	{
+		return;
+	}
+	const HRESULT comResult = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+	if (FAILED(comResult) && comResult != RPC_E_CHANGED_MODE)
+	{
+		return;
+	}
+	ownsComInitialization = SUCCEEDED(comResult);
+	HRESULT result = XAudio2Create(pXAudio.ReleaseAndGetAddressOf());
+	if (SUCCEEDED(result))
+	{
+		result = pXAudio->CreateMasteringVoice(&pMasteringVoice);
+	}
+	if (FAILED(result))
+	{
+		AllRelease();
+	}
 }
 
 //サウンドファイル(.wav）をロード
@@ -195,10 +212,16 @@ void Audio::Release()
 //本体の解放
 void Audio::AllRelease()
 {
-	CoUninitialize();
+	Release();
 	if (pMasteringVoice)
 	{
 		pMasteringVoice->DestroyVoice();
+		pMasteringVoice = nullptr;
 	}
-	pXAudio->Release();
+	pXAudio.Reset();
+	if (ownsComInitialization)
+	{
+		CoUninitialize();
+		ownsComInitialization = false;
+	}
 }

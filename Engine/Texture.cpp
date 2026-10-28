@@ -5,10 +5,7 @@
 #include <climits>
 using Microsoft::WRL::ComPtr;
 Texture::Texture() : pSampleLinear_(nullptr), pTextureSRV_(nullptr), size_(0,0,0) {}
-Texture::~Texture() {
- if (pSampleLinear_) pSampleLinear_->Release();
- if (pTextureSRV_) pTextureSRV_->Release();
-}
+Texture::~Texture() = default;
 HRESULT Texture::Load(std::string fileName) {
  if (!Direct3D::pDevice_) return E_FAIL;
  // Keep the engine's existing Windows multibyte path convention.
@@ -52,9 +49,8 @@ HRESULT Texture::Load(std::string fileName) {
  samplerDesc.MaxLOD=D3D11_FLOAT32_MAX; samplerDesc.ComparisonFunc=D3D11_COMPARISON_NEVER;
  ComPtr<ID3D11SamplerState> sampler;
  hr=Direct3D::pDevice_->CreateSamplerState(&samplerDesc,&sampler); if (FAILED(hr)) return hr;
- if (pTextureSRV_) pTextureSRV_->Release();
- if (pSampleLinear_) pSampleLinear_->Release();
- pTextureSRV_=srv.Detach(); pSampleLinear_=sampler.Detach();
+ pTextureSRV_ = std::move(srv);
+ pSampleLinear_ = std::move(sampler);
  size_=XMFLOAT3((float)width,(float)height,0);
  return S_OK;
 }

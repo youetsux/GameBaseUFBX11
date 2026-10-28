@@ -45,20 +45,7 @@ namespace {
     }
 }
 
-FbxParts::~FbxParts() {
-    for (MATERIAL& material : materials_) {
-        if (material.buffer) {
-            material.buffer->Release();
-        }
-        // Shared textures are released with the last material that uses them.
-    }
-    if (vertexBuffer_) {
-        vertexBuffer_->Release();
-    }
-    if (constantBuffer_) {
-        constantBuffer_->Release();
-    }
-}
+FbxParts::~FbxParts() = default;
 HRESULT FbxParts::Init(const ufbx_node* node, const std::string& modelDirectory) {
     if (!node || !node->mesh || !Direct3D::pDevice_) {
         return E_FAIL;
@@ -158,7 +145,7 @@ HRESULT FbxParts::CreateBuffers() {
     vertexBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
     D3D11_SUBRESOURCE_DATA vertexData{};
     vertexData.pSysMem = vertices_.data();
-    HRESULT result = Direct3D::pDevice_->CreateBuffer(&vertexBufferDesc, &vertexData, &vertexBuffer_);
+    HRESULT result = Direct3D::pDevice_->CreateBuffer(&vertexBufferDesc, &vertexData, vertexBuffer_.ReleaseAndGetAddressOf());
     if (FAILED(result)) {
         return result;
     }
@@ -172,7 +159,7 @@ HRESULT FbxParts::CreateBuffers() {
         indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
         D3D11_SUBRESOURCE_DATA indexData{};
         indexData.pSysMem = material.indices.data();
-        result = Direct3D::pDevice_->CreateBuffer(&indexBufferDesc, &indexData, &material.buffer);
+        result = Direct3D::pDevice_->CreateBuffer(&indexBufferDesc, &indexData, material.buffer.ReleaseAndGetAddressOf());
         if (FAILED(result)) {
             return result;
         }
@@ -182,7 +169,7 @@ HRESULT FbxParts::CreateBuffers() {
     constantBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
     constantBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
     constantBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-    return Direct3D::pDevice_->CreateBuffer(&constantBufferDesc, nullptr, &constantBuffer_);
+    return Direct3D::pDevice_->CreateBuffer(&constantBufferDesc, nullptr, constantBuffer_.ReleaseAndGetAddressOf());
 }
 void FbxParts::UpdateVertices(const ufbx_node* animatedNode) {
     if (!animatedNode || !animatedNode->mesh || !vertexBuffer_) {
@@ -225,9 +212,9 @@ void FbxParts::UploadVertices() {
         return;
     }
     D3D11_MAPPED_SUBRESOURCE mapped{};
-    if (SUCCEEDED(Direct3D::pContext_->Map(vertexBuffer_, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped))) {
+    if (SUCCEEDED(Direct3D::pContext_->Map(vertexBuffer_.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped))) {
         memcpy(mapped.pData, vertices_.data(), vertices_.size() * sizeof(VERTEX));
-        Direct3D::pContext_->Unmap(vertexBuffer_, 0);
+        Direct3D::pContext_->Unmap(vertexBuffer_.Get(), 0);
     }
 }
 void FbxParts::Evaluate(const ufbx_scene* evaluated) {
@@ -250,9 +237,9 @@ void FbxParts::Draw(Transform& transform) {
     }
     UINT stride = sizeof(VERTEX);
     UINT offset = 0;
-    Direct3D::pContext_->IASetVertexBuffers(0, 1, &vertexBuffer_, &stride, &offset);
-    Direct3D::pContext_->VSSetConstantBuffers(0, 1, &constantBuffer_);
-    Direct3D::pContext_->PSSetConstantBuffers(0, 1, &constantBuffer_);
+    Direct3D::pContext_->IASetVertexBuffers(0, 1, vertexBuffer_.GetAddressOf(), &stride, &offset);
+    Direct3D::pContext_->VSSetConstantBuffers(0, 1, constantBuffer_.GetAddressOf());
+    Direct3D::pContext_->PSSetConstantBuffers(0, 1, constantBuffer_.GetAddressOf());
     const XMMATRIX worldMatrix = transform.GetWorldMatrix();
     const XMMATRIX viewMatrix = Camera::GetViewMatrix();
     const XMMATRIX projectionMatrix = Camera::GetProjectionMatrix();
@@ -262,7 +249,7 @@ void FbxParts::Draw(Transform& transform) {
         if (!material.buffer) {
             continue;
         }
-        Direct3D::pContext_->IASetIndexBuffer(material.buffer, DXGI_FORMAT_R32_UINT, 0);
+        Direct3D::pContext_->IASetIndexBuffer(material.buffer.Get(), DXGI_FORMAT_R32_UINT, 0);
         CONSTANT_BUFFER constants{};
         constants.worldVewProj = XMMatrixTranspose(worldViewProjection);
         constants.world = XMMatrixTranspose(worldMatrix);
@@ -276,9 +263,9 @@ void FbxParts::Draw(Transform& transform) {
         constants.lightDirection = XMFLOAT4(1, -1, 1, 0);
         constants.isTexture = material.texture && material.texture->GetSRV();
         D3D11_MAPPED_SUBRESOURCE mapped{};
-        if (SUCCEEDED(Direct3D::pContext_->Map(constantBuffer_, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped))) {
+        if (SUCCEEDED(Direct3D::pContext_->Map(constantBuffer_.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped))) {
             memcpy(mapped.pData, &constants, sizeof(constants));
-            Direct3D::pContext_->Unmap(constantBuffer_, 0);
+            Direct3D::pContext_->Unmap(constantBuffer_.Get(), 0);
         }
         ID3D11SamplerState* sampler = nullptr;
         ID3D11ShaderResourceView* textureView = nullptr;

@@ -36,7 +36,7 @@ HRESULT BillBoard::Load(std::string fileName)
 	bd_vertex.StructureByteStride = 0;
 	D3D11_SUBRESOURCE_DATA data_vertex;
 	data_vertex.pSysMem = vertices;
-	hr = Direct3D::pDevice_->CreateBuffer(&bd_vertex, &data_vertex, &pVertexBuffer_);
+	hr = Direct3D::pDevice_->CreateBuffer(&bd_vertex, &data_vertex, pVertexBuffer_.ReleaseAndGetAddressOf());
 	if (FAILED(hr))
 	{
 		return hr;
@@ -59,7 +59,7 @@ HRESULT BillBoard::Load(std::string fileName)
 	InitData.pSysMem = index;
 	InitData.SysMemPitch = 0;
 	InitData.SysMemSlicePitch = 0;
-	hr = Direct3D::pDevice_->CreateBuffer(&bd, &InitData, &pIndexBuffer_);
+	hr = Direct3D::pDevice_->CreateBuffer(&bd, &InitData, pIndexBuffer_.ReleaseAndGetAddressOf());
 	if (FAILED(hr))
 	{
 		return hr;
@@ -75,7 +75,7 @@ HRESULT BillBoard::Load(std::string fileName)
 	cb.StructureByteStride = 0;
 
 	// コンスタントバッファの作成
-	Direct3D::pDevice_->CreateBuffer(&cb, nullptr, &pConstantBuffer_);
+	Direct3D::pDevice_->CreateBuffer(&cb, nullptr, pConstantBuffer_.ReleaseAndGetAddressOf());
 
 
 	//テクスチャ
@@ -95,7 +95,7 @@ void BillBoard::Draw(XMMATRIX matWorld, XMFLOAT4 color)
 	cb.color = color;
 
 	D3D11_MAPPED_SUBRESOURCE pdata;
-	Direct3D::pContext_->Map(pConstantBuffer_, 0, D3D11_MAP_WRITE_DISCARD, 0, &pdata);	// GPUからのデータアクセスを止める
+	Direct3D::pContext_->Map(pConstantBuffer_.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &pdata);	// GPUからのデータアクセスを止める
 	memcpy_s(pdata.pData, pdata.RowPitch, (void*)(&cb), sizeof(cb));	// データを値を送る
 
 	ID3D11SamplerState* pSampler = pTexture_->GetSampler();
@@ -104,23 +104,23 @@ void BillBoard::Draw(XMMATRIX matWorld, XMFLOAT4 color)
 	ID3D11ShaderResourceView* pSRV = pTexture_->GetSRV();
 	Direct3D::pContext_->PSSetShaderResources(0, 1, &pSRV);
 
-	Direct3D::pContext_->Unmap(pConstantBuffer_, 0);	//再開
+	Direct3D::pContext_->Unmap(pConstantBuffer_.Get(), 0);	//再開
 
 
 
 	//頂点バッファ
 	UINT stride = sizeof(VERTEX);
 	UINT offset = 0;
-	Direct3D::pContext_->IASetVertexBuffers(0, 1, &pVertexBuffer_, &stride, &offset);
+	Direct3D::pContext_->IASetVertexBuffers(0, 1, pVertexBuffer_.GetAddressOf(), &stride, &offset);
 
 	// インデックスバッファーをセット
 	stride = sizeof(int);
 	offset = 0;
-	Direct3D::pContext_->IASetIndexBuffer(pIndexBuffer_, DXGI_FORMAT_R32_UINT, 0);
+	Direct3D::pContext_->IASetIndexBuffer(pIndexBuffer_.Get(), DXGI_FORMAT_R32_UINT, 0);
 
 	//コンスタントバッファ
-	Direct3D::pContext_->VSSetConstantBuffers(0, 1, &pConstantBuffer_);	//頂点シェーダー用	
-	Direct3D::pContext_->PSSetConstantBuffers(0, 1, &pConstantBuffer_);	//ピクセルシェーダー用
+	Direct3D::pContext_->VSSetConstantBuffers(0, 1, pConstantBuffer_.GetAddressOf());	//頂点シェーダー用
+	Direct3D::pContext_->PSSetConstantBuffers(0, 1, pConstantBuffer_.GetAddressOf());	//ピクセルシェーダー用
 
 	Direct3D::pContext_->DrawIndexed(6, 0, 0);
 }
@@ -130,7 +130,7 @@ void BillBoard::Draw(XMMATRIX matWorld, XMFLOAT4 color)
 void BillBoard::Release()
 {
 	pTexture_.reset();
-	SAFE_RELEASE(pConstantBuffer_);
-	SAFE_RELEASE(pIndexBuffer_);
-	SAFE_RELEASE(pVertexBuffer_);
+	pConstantBuffer_.Reset();
+	pIndexBuffer_.Reset();
+	pVertexBuffer_.Reset();
 }

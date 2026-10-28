@@ -18,7 +18,7 @@
 #include <cfloat>
 using Microsoft::WRL::ComPtr;
 namespace Model { extern std::vector<std::unique_ptr<ModelData>> _datas; }
-namespace Direct3D { extern ID3D11BlendState* pBlendState[BLEND_MAX]; }
+namespace Direct3D { extern ComPtr<ID3D11BlendState> pBlendState[BLEND_MAX]; }
 namespace Image { extern std::vector<std::unique_ptr<ImageData>> _datas; }
 namespace VFX {
  extern std::list<std::unique_ptr<Emitter>> emitterList_;
@@ -242,8 +242,8 @@ int main(int argc,char** argv) {
  const bool hardware = std::getenv("UFBX_TEST_HARDWARE") != nullptr;
  D3D_DRIVER_TYPE driver = hardware ? D3D_DRIVER_TYPE_HARDWARE : D3D_DRIVER_TYPE_WARP;
  UINT flags=D3D11_CREATE_DEVICE_DEBUG;
- HRESULT hr=D3D11CreateDevice(nullptr,driver,nullptr,flags,nullptr,0,D3D11_SDK_VERSION,&Direct3D::pDevice_,nullptr,&Direct3D::pContext_);
- if(FAILED(hr)) { flags=0; hr=D3D11CreateDevice(nullptr,driver,nullptr,flags,nullptr,0,D3D11_SDK_VERSION,&Direct3D::pDevice_,nullptr,&Direct3D::pContext_); }
+ HRESULT hr=D3D11CreateDevice(nullptr,driver,nullptr,flags,nullptr,0,D3D11_SDK_VERSION,Direct3D::pDevice_.ReleaseAndGetAddressOf(),nullptr,Direct3D::pContext_.ReleaseAndGetAddressOf());
+ if(FAILED(hr)) { flags=0; hr=D3D11CreateDevice(nullptr,driver,nullptr,flags,nullptr,0,D3D11_SDK_VERSION,Direct3D::pDevice_.ReleaseAndGetAddressOf(),nullptr,Direct3D::pContext_.ReleaseAndGetAddressOf()); }
  check(SUCCEEDED(hr),"WARP device"); if(FAILED(hr)) return 1;
  {
   auto first = TextureManager::Load("char.png");
@@ -291,7 +291,7 @@ int main(int argc,char** argv) {
  blendDesc.RenderTarget[0].RenderTargetWriteMask=D3D11_COLOR_WRITE_ENABLE_ALL;
  ComPtr<ID3D11BlendState> blend;
  check(SUCCEEDED(Direct3D::pDevice_->CreateBlendState(&blendDesc,&blend)),"game alpha blend state");
- Direct3D::pBlendState[Direct3D::BLEND_DEFAULT]=blend.Get();
+ Direct3D::pBlendState[Direct3D::BLEND_DEFAULT]=blend;
  {Texture texture;check(SUCCEEDED(texture.Load("char.png")),"WIC texture upload");check(texture.GetSRV()!=nullptr,"texture SRV");check(FAILED(texture.Load("__missing__.png")),"missing texture handled");}
  for(int file=1;file<argc;++file) {
   printf("MODEL %s\n",argv[file]);
@@ -515,7 +515,12 @@ int main(int argc,char** argv) {
  Model::AllRelease();
  if(info)for(UINT64 i=0;i<info->GetNumStoredMessagesAllowedByRetrievalFilter();++i){SIZE_T bytes=0;info->GetMessage(i,nullptr,&bytes);std::vector<BYTE> buffer(bytes);auto* msg=(D3D11_MESSAGE*)buffer.data();info->GetMessage(i,msg,&bytes);if(msg->Severity<=D3D11_MESSAGE_SEVERITY_ERROR){printf("D3D ERROR: %s\n",msg->pDescription);++failures;}}
  TextureManager::Clear();
- Direct3D::pContext_->ClearState();
+ Direct3D::Release();
+ Direct3D::Release();
+ check(Direct3D::pDevice_ == nullptr && Direct3D::pContext_ == nullptr,
+       "Direct3D repeated release clears COM owners");
+ check(Direct3D::pBlendState[Direct3D::BLEND_DEFAULT] == nullptr,
+       "Direct3D release clears blend state owner");
  printf("RESULT: %s (%d failures)\n",failures?"FAIL":"PASS",failures);return failures?1:0;
 }
 

@@ -161,6 +161,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	
 
 	//いろいろ解放
+	Input::Release();
 	VFX::Release();
 	Audio::AllRelease();
 	Model::AllRelease();

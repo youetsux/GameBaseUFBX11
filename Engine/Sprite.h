@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <wrl/client.h>
 #include <memory>
 #include <d3d11.h>
 #include <DirectXMath.h>
@@ -39,18 +40,18 @@ protected:
 	//【頂点バッファ】
 	//各頂点の情報（位置とか色とか）を格納するところ
 	//頂点数分の配列にして使う
-	ID3D11Buffer *pVertexBuffer_ = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> pVertexBuffer_ = nullptr;
 
 	//【インデックスバッファ】
 	//「どの頂点」と「どの頂点」と「どの頂点」で３角形ポリゴンになるかの情報を格納するところ
-	ID3D11Buffer *pIndexBuffer_ = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> pIndexBuffer_ = nullptr;
 
 	//【テクスチャ】
 	std::unique_ptr<Texture> pTexture_;
 
 	//【定数バッファ】
 	//シェーダー（Simple2D.hlsl）のグローバル変数に値を渡すためのもの
-	ID3D11Buffer *pConstantBuffer_ = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> pConstantBuffer_ = nullptr;
 
 
 	//////////////////////////private関数（Load関数から呼ばれる）/////////////////////////////

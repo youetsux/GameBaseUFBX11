@@ -44,3 +44,27 @@ Tests/Results/smart-* にログを保存しています。
 Debug/Release × x64/x86の全4構成でビルド成功。skg.fbxの読み込み直後122.67MiB、600回評価後123.28MiB（単独の評価・頂点転送計測）。
 
 テクスチャ保持方式を更新: TextureManagerもshared_ptrで保持し、TextureManager::Clear()でキャッシュを明示的に解放します。シーン切替・終了時の呼び出しを追加済みです。
+
+## DirectXのCOM資源をComPtrへ移行（2026-10-28）
+
+Direct3Dのデバイス・コンテキスト・スワップチェーン・各ビュー・シェーダー・描画ステート、FbxParts / Sprite / BillBoardのバッファ、TextureのSRVとサンプラー、DirectInput、XAudio2本体をMicrosoft::WRL::ComPtrで保持します。
+Windows SDKのwrl/client.hを使用し、WILなどの依存は追加していません。
+
+作成・再作成の出力引数にはReleaseAndGetAddressOf()、APIへ渡す借用ポインターにはGet()、バッファ等の設定APIに渡す配列にはGetAddressOf()を使います。設定APIでReleaseAndGetAddressOf()を使うと保持中の資源を解放するため、使い分けが必要です。
+Texture::GetSRV / GetSamplerの戻り値と、TextureManagerのデバイス識別用ポインターは借用参照のままです。呼び出し側でReleaseしないでください。
+Direct3D::pDevice_ / pContext_とSHADER_BUNDLEの各メンバーはComPtr型になりました。外部コードで生ポインターを必要とする場合は.Get()を使ってください。通常の -> によるメソッド呼び出しは従来どおりです。
+
+Direct3D::Releaseはコンテキストの設定を解除してから描画資源、コンテキスト、デバイスの順にResetします。
+Mainの終了時にInput::Releaseを呼びます。
+XAudio2のボイスはCOMではないためDestroyVoiceを維持します。シーン切替時には音声エンジンを再作成せず再利用し、終了時はソースボイス、マスターボイス、XAudio2本体、所有するCOM初期化の順に後片付けします。
+WindowsのHANDLE / HWND等の管理、モデル配置、アニメーションの進行方式は変更していません。
+
+確認結果:
+- Debug / Release × x64 / x86の4構成でビルド成功。
+- 既存SmokeテストはWARP・実GPUともRESULT: PASS (0 failures)。Direct3Dデバッグ層のError / Corruptionは0件。
+- Run / Walkingの頂点変形、1,000体（2,298,000三角形）の描画、共有・解放、ボーン・レイ判定を確認。
+- SmokeテストにDirect3D::Releaseの繰り返しと保持資源のクリア確認を追加。
+- 別の非表示ウィンドウの実行検査で、描画・DirectInput・XAudio2の初期化、Texture再読み込みと失敗後の保持、Sprite / BillBoard描画、解放の繰り返し、再初期化を2サイクル確認。
+- ゲーム画面の目視と実際の音声再生は未確認。
+
+Tests/Results/comptr-*.logに検証ログを保存しています。

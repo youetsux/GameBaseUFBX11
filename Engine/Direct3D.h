@@ -1,4 +1,5 @@
 #pragma once
+#include <wrl/client.h>
 
 //インクルード
 #include <Windows.h>
@@ -20,11 +21,11 @@ namespace Direct3D
 	////////////////////////外部からもアクセスする変数群///////////////////////////////
 	//【デバイス】
 	//描画を行うための環境やリソースの作成に使う
-	extern ID3D11Device*           pDevice_;
+	extern Microsoft::WRL::ComPtr<ID3D11Device> pDevice_;
 
 	//【コンテキスト】
 	//GPUに命令を出すためのやつ
-	extern ID3D11DeviceContext*    pContext_;
+	extern Microsoft::WRL::ComPtr<ID3D11DeviceContext> pContext_;
 
 
 	//■シェーダー関連で必要なセット
@@ -33,20 +34,20 @@ namespace Direct3D
 	{
 		//【頂点入力レイアウト情報】
 		//1つの頂点データがどんな情報をどんな順番で格納してるか（位置と色と法線と…とか）
-		ID3D11InputLayout *pVertexLayout;
+		Microsoft::WRL::ComPtr<ID3D11InputLayout> pVertexLayout;
 
 		//【頂点シェーダ】
 		//シェーダー（〇〇.hlsl）の中の頂点シェーダー（VS）部分をコンパイルしたものが入る
 		//シェーダーはハードによって動作が異なるので、実行時にコンパイルする。
-		ID3D11VertexShader *pVertexShader;
+		Microsoft::WRL::ComPtr<ID3D11VertexShader> pVertexShader;
 
 		//【ピクセルシェーダ】
 		//シェーダー（〇〇.hlsl）の中のピクセルシェーダー（PS）部分をコンパイルしたものが入る
-		ID3D11PixelShader *pPixelShader;
+		Microsoft::WRL::ComPtr<ID3D11PixelShader> pPixelShader;
 
 		//【ラスタライザ】
 		//頂点の表示位置確定後、画面のどのピクセルを光らせればいいか求めるもの
-		ID3D11RasterizerState*	pRasterizerState;
+		Microsoft::WRL::ComPtr<ID3D11RasterizerState> pRasterizerState;
 	};
 
 	//■ブレンドモード

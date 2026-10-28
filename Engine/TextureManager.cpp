@@ -16,7 +16,7 @@ namespace {
 
     std::shared_ptr<Texture> FindTexture(const std::wstring& path) {
         for (const CachedTexture& entry : textureCache) {
-            if (entry.device != Direct3D::pDevice_) {
+            if (entry.device != Direct3D::pDevice_.Get()) {
                 continue;
             }
             if (entry.path != path) {
@@ -64,7 +64,7 @@ namespace TextureManager {
         }
 
         CachedTexture entry;
-        entry.device = Direct3D::pDevice_;
+        entry.device = Direct3D::pDevice_.Get();
         entry.path = cachePath;
         entry.texture = texture;
         textureCache.push_back(entry);

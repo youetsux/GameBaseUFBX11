@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <wrl/client.h>
 #include <memory>
 #include "Direct3D.h"
 #include "Texture.h"
@@ -24,9 +25,9 @@ struct VERTEX
 //常にカメラの方を向く四角形ポリゴン
 class BillBoard
 {
-	ID3D11Buffer* pVertexBuffer_ = nullptr;	//頂点バッファ
-	ID3D11Buffer* pIndexBuffer_ = nullptr;	//インデックスバッファ
-	ID3D11Buffer* pConstantBuffer_ = nullptr;	//コンスタントバッファ
+	Microsoft::WRL::ComPtr<ID3D11Buffer> pVertexBuffer_ = nullptr;	//頂点バッファ
+	Microsoft::WRL::ComPtr<ID3D11Buffer> pIndexBuffer_ = nullptr;	//インデックスバッファ
+	Microsoft::WRL::ComPtr<ID3D11Buffer> pConstantBuffer_ = nullptr;	//コンスタントバッファ
 
 	std::unique_ptr<Texture> pTexture_;	//画像
 

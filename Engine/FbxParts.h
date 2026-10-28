@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <wrl/client.h>
 #include <d3d11.h>
 #include <DirectXMath.h>
 #include <string>
@@ -35,15 +36,15 @@ class FbxParts {
         float shininess = 0;
         std::shared_ptr<Texture> texture;
         std::vector<DWORD> indices;
-        ID3D11Buffer* buffer = nullptr;
+        Microsoft::WRL::ComPtr<ID3D11Buffer> buffer = nullptr;
     };
     const ufbx_node* node_ = nullptr;
     const ufbx_node* currentNode_ = nullptr;
     std::vector<VERTEX> vertices_;
     std::vector<uint32_t> cornerIndices_;
     std::vector<MATERIAL> materials_;
-    ID3D11Buffer* vertexBuffer_ = nullptr;
-    ID3D11Buffer* constantBuffer_ = nullptr;
+    Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer_ = nullptr;
+    Microsoft::WRL::ComPtr<ID3D11Buffer> constantBuffer_ = nullptr;
 
     void LoadMaterials(const ufbx_node* node, const std::string& modelDirectory);
     void BuildVertices(const ufbx_mesh* mesh);

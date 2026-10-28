@@ -1,4 +1,5 @@
 #include "Input.h"
+#include <wrl/client.h>
 #include "Global.h"
 
 namespace Input
@@ -7,15 +8,15 @@ namespace Input
 	HWND	hWnd_;
 
 	//DirectInputオブジェクト
-	LPDIRECTINPUT8			pDInput_;
+	Microsoft::WRL::ComPtr<IDirectInput8> pDInput_;
 
 	//キーボード
-	LPDIRECTINPUTDEVICE8	pKeyDevice_;	//デバイスオブジェクト
+	Microsoft::WRL::ComPtr<IDirectInputDevice8> pKeyDevice_;	//デバイスオブジェクト
 	BYTE keyState_[256];					//現在の各キーの状態
 	BYTE prevKeyState_[256];				//前フレームでの各キーの状態
 
 	//マウス
-	LPDIRECTINPUTDEVICE8	pMouseDevice_;	//デバイスオブジェクト
+	Microsoft::WRL::ComPtr<IDirectInputDevice8> pMouseDevice_;	//デバイスオブジェクト
 	DIMOUSESTATE mouseState_;				//マウスの状態
 	DIMOUSESTATE prevMouseState_;			//前フレームのマウスの状態
 	POINT mousePos_;							//マウスカーソルの位置
@@ -36,15 +37,15 @@ namespace Input
 
 		//DirectInput本体
 		DirectInput8Create(GetModuleHandle(nullptr), DIRECTINPUT_VERSION,
-			IID_IDirectInput8, (VOID**)&pDInput_, nullptr);
+			IID_IDirectInput8, reinterpret_cast<void**>(pDInput_.ReleaseAndGetAddressOf()), nullptr);
 
 		//キーボード
-		pDInput_->CreateDevice(GUID_SysKeyboard, &pKeyDevice_, nullptr);
+		pDInput_->CreateDevice(GUID_SysKeyboard, pKeyDevice_.ReleaseAndGetAddressOf(), nullptr);
 		pKeyDevice_->SetDataFormat(&c_dfDIKeyboard);
 		pKeyDevice_->SetCooperativeLevel(NULL, DISCL_NONEXCLUSIVE | DISCL_FOREGROUND);
 
 		//マウス
-		pDInput_->CreateDevice(GUID_SysMouse, &pMouseDevice_, nullptr);
+		pDInput_->CreateDevice(GUID_SysMouse, pMouseDevice_.ReleaseAndGetAddressOf(), nullptr);
 		pMouseDevice_->SetDataFormat(&c_dfDIMouse);
 		pMouseDevice_->SetCooperativeLevel(hWnd_, DISCL_NONEXCLUSIVE | DISCL_FOREGROUND);
 	}
@@ -77,9 +78,9 @@ namespace Input
 	//開放
 	void Release()
 	{
-		SAFE_RELEASE(pMouseDevice_);
-		SAFE_RELEASE(pKeyDevice_);
-		SAFE_RELEASE(pDInput_);
+		pMouseDevice_.Reset();
+		pKeyDevice_.Reset();
+		pDInput_.Reset();
 	}
 
 
