@@ -4,7 +4,7 @@
 
 namespace {
     const int ModelColumns = 50;
-    const int ModelRows = 20;
+    const int ModelRows = 50;
     const float ModelSpacing = 1.0f;
     const float CameraMoveSeconds = 30.0f;
     const float CameraEndDistanceRatio = 0.15f;
@@ -25,7 +25,7 @@ void TestScene::Initialize()
 
     for (int row = 0; row < ModelRows; ++row) {
         for (int column = 0; column < ModelColumns; ++column) {
-            // ƒnƒ“ƒhƒ‹‚Æ”z’u‚ÍŒÂ•ÊBFBX‚Æ‰æ‘œ‚Í“Ç‚İ‚İÏ‚İƒf[ƒ^‚ğ‹¤—L‚·‚éB
+            // ï¿½nï¿½ï¿½ï¿½hï¿½ï¿½ï¿½Æ”zï¿½uï¿½ÍŒÂ•ÊBFBXï¿½Æ‰æ‘œï¿½Í“Ç‚İï¿½ï¿½İÏ‚İƒfï¿½[ï¿½^ï¿½ï¿½ï¿½ï¿½Lï¿½ï¿½ï¿½ï¿½B
             const int handle = Model::Load(ModelFilename);
             if (handle < 0) {
                 OutputDebugStringA("Crowd test: model load failed.\n");
@@ -38,7 +38,7 @@ void TestScene::Initialize()
             transform.position_.z = row * ModelSpacing - halfDepth;
             Model::SetTransform(handle, transform);
 
-            // ‘Sˆõ‚ğ“¯‚¶‚ÅÄ¶‚µA‹¤’Ê‚Ìp¨‚ğg‚Á‚Ä‘Sˆõ‚ğ•`‰æ‚·‚éB
+            // ï¿½Sï¿½ï¿½ï¿½ğ“¯‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÅÄï¿½ï¿½ï¿½ï¿½Aï¿½ï¿½ï¿½Ê‚Ìpï¿½ï¿½ï¿½ï¿½gï¿½ï¿½ï¿½Ä‘Sï¿½ï¿½ï¿½ï¿½`ï¿½æ‚·ï¿½ï¿½B
             Model::SetAnimFrame(handle, 0, 152, 1.0f);
             modelHandles_.push_back(handle);
         }
@@ -58,7 +58,7 @@ void TestScene::Update()
         return;
     }
 
-    // Œo‰ß•b”‚Åi‚ß‚é‚Ì‚ÅA•`‰æFPS‚É‚æ‚Á‚ÄƒJƒƒ‰‚Ì‘¬‚³‚Í•Ï‚í‚ç‚È‚¢B
+    // ï¿½oï¿½ß•bï¿½ï¿½ï¿½Åiï¿½ß‚ï¿½Ì‚ÅAï¿½`ï¿½ï¿½FPSï¿½É‚ï¿½ï¿½ï¿½ÄƒJï¿½ï¿½ï¿½ï¿½ï¿½Ì‘ï¿½ï¿½ï¿½ï¿½Í•Ï‚ï¿½ï¿½È‚ï¿½ï¿½B
     const ULONGLONG elapsedMilliseconds = GetTickCount64() - cameraStartTime_;
     const float elapsedSeconds = static_cast<float>(elapsedMilliseconds) / 1000.0f;
     float progress = elapsedSeconds / CameraMoveSeconds;
@@ -66,7 +66,7 @@ void TestScene::Update()
         progress = 1.0f;
     }
 
-    // ŠJnˆÊ’u‚©‚ç’‹“_‚Ö‚Ì’¼üã‚ğˆÚ“®‚µAè‘O‚Å~‚ß‚éB
+    // ï¿½Jï¿½nï¿½Ê’uï¿½ï¿½ï¿½ç’ï¿½ï¿½ï¿½_ï¿½Ö‚Ì’ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú“ï¿½ï¿½ï¿½ï¿½Aï¿½ï¿½Oï¿½Å~ï¿½ß‚ï¿½B
     const float distanceRatio = 1.0f - progress * (1.0f - CameraEndDistanceRatio);
     XMFLOAT3 position;
     position.x = cameraTarget_.x + (cameraStartPosition_.x - cameraTarget_.x) * distanceRatio;
