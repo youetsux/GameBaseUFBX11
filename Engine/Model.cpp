@@ -1,4 +1,4 @@
-﻿#include "Global.h"
+﻿
 #include "Model.h"
 
 //3Dモデル（FBXファイル）を管理する

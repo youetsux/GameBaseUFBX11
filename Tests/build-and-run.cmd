@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 setlocal
 for %%I in ("%~dp0..") do set "PROJECT=%%~fI"
 if defined VSINSTALLDIR goto ready

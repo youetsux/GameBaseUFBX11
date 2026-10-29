@@ -11,7 +11,7 @@
 #include <assert.h>
 #include <time.h>
 
-#include "global.h"
+#include "Direct3D.h"
 #include "RootObject.h"
 #include "Model.h"
 #include "Image.h"

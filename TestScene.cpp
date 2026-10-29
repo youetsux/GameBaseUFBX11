@@ -3,7 +3,7 @@
 #include "Engine/Camera.h"
 
 namespace {
-    const int ModelColumns = 20;
+    const int ModelColumns = 10;
     const int ModelRows = 20;
     const float ModelSpacing = 1.0f;
     const int AnimationStartFrame = 0;
@@ -28,7 +28,7 @@ void TestScene::Initialize()
 
     for (int row = 0; row < ModelRows; ++row) {
         for (int column = 0; column < ModelColumns; ++column) {
-            // ï¿½nï¿½ï¿½ï¿½hï¿½ï¿½ï¿½Æ”zï¿½uï¿½ÍŒÂ•ÊBFBXï¿½Æ‰æ‘œï¿½Í“Ç‚İï¿½ï¿½İÏ‚İƒfï¿½[ï¿½^ï¿½ï¿½ï¿½ï¿½Lï¿½ï¿½ï¿½ï¿½B
+            // ƒnƒ“ƒhƒ‹‚Æ”z’u‚ÍŒÂ•ÊBFBX‚Æ‰æ‘œ‚Í“Ç‚İ‚İÏ‚İƒf[ƒ^‚ğ‹¤—L‚·‚éB
             const int handle = Model::Load(ModelFilename);
             if (handle < 0) {
                 OutputDebugStringA("Crowd test: model load failed.\n");
@@ -73,7 +73,7 @@ void TestScene::Update()
         return;
     }
 
-    // ï¿½oï¿½ß•bï¿½ï¿½ï¿½Åiï¿½ß‚ï¿½Ì‚ÅAï¿½`ï¿½ï¿½FPSï¿½É‚ï¿½ï¿½ï¿½ÄƒJï¿½ï¿½ï¿½ï¿½ï¿½Ì‘ï¿½ï¿½ï¿½ï¿½Í•Ï‚ï¿½ï¿½È‚ï¿½ï¿½B
+    // Œo‰ß•b”‚Åi‚ß‚é‚½‚ßAFPS‚É‚æ‚Á‚ÄƒJƒƒ‰‚Ì‘¬‚³‚Í•Ï‚í‚ç‚È‚¢B
     const ULONGLONG elapsedMilliseconds = GetTickCount64() - cameraStartTime_;
     const float elapsedSeconds = static_cast<float>(elapsedMilliseconds) / 1000.0f;
     float progress = elapsedSeconds / CameraMoveSeconds;
@@ -81,7 +81,7 @@ void TestScene::Update()
         progress = 1.0f;
     }
 
-    // ï¿½Jï¿½nï¿½Ê’uï¿½ï¿½ï¿½ç’ï¿½ï¿½ï¿½_ï¿½Ö‚Ì’ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú“ï¿½ï¿½ï¿½ï¿½Aï¿½ï¿½Oï¿½Å~ï¿½ß‚ï¿½B
+    // ŠJnˆÊ’u‚©‚ç’‹“_‚Ö’¼ü“I‚ÉˆÚ“®‚µAè‘O‚Å~‚ß‚éB
     const float distanceRatio = 1.0f - progress * (1.0f - CameraEndDistanceRatio);
     XMFLOAT3 position;
     position.x = cameraTarget_.x + (cameraStartPosition_.x - cameraTarget_.x) * distanceRatio;

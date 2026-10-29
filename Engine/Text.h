@@ -1,11 +1,11 @@
-#pragma once
+ï»¿#pragma once
 #include "Image.h"
 
 class Text
 {
 	int hPict_;
 
-	unsigned int width_, height_;	//1•¶š•ª‚Ì•‚Æ‚‚³
+	unsigned int width_, height_;	//1æ–‡å­—åˆ†ã®å¹…ã¨é«˜ã•
 	char fileName_[MAX_PATH];
 	unsigned int rowLength_;
 
@@ -13,30 +13,30 @@ public:
 	Text();
 	~Text();
 
-	//‰Šú‰»iƒfƒtƒHƒ‹ƒg‚Ìİ’èj
-	//–ß’lF¬Œ÷^¸”s
+	//åˆæœŸåŒ–ï¼ˆãƒ‡ãƒ•ã‚©ãƒ«ãƒˆã®è¨­å®šï¼‰
+	//æˆ»å€¤ï¼šæˆåŠŸï¼å¤±æ•—
 	HRESULT Initialize();
 
-	//‰Šú‰»iƒIƒŠƒWƒiƒ‹‚Ì‰æ‘œ‚ğg‚¢‚½‚¢j
-	//ˆø”FfileName	‰æ‘œƒtƒ@ƒCƒ‹–¼
-	//ˆø”FcharWidth	‰æ‘œ‚Ì‚P•¶š‚Ì•iƒsƒNƒZƒ‹j
-	//ˆø”FcharHeight	‰æ‘œ‚Ì‚P•¶š‚Ì‚‚³iƒsƒNƒZƒ‹j
-	//ˆø”FrowLength	‰æ‘œ‚Ì’†‚É‰¡‚É‰½•¶š•À‚ñ‚Å‚¢‚é‚©
-	//–ß’lF¬Œ÷^¸”s
+	//åˆæœŸåŒ–ï¼ˆã‚ªãƒªã‚¸ãƒŠãƒ«ã®ç”»åƒã‚’ä½¿ã„ãŸã„æ™‚ï¼‰
+	//å¼•æ•°ï¼šfileName	ç”»åƒãƒ•ã‚¡ã‚¤ãƒ«å
+	//å¼•æ•°ï¼šcharWidth	ç”»åƒã®ï¼‘æ–‡å­—ã®å¹…ï¼ˆãƒ”ã‚¯ã‚»ãƒ«ï¼‰
+	//å¼•æ•°ï¼šcharHeight	ç”»åƒã®ï¼‘æ–‡å­—ã®é«˜ã•ï¼ˆãƒ”ã‚¯ã‚»ãƒ«ï¼‰
+	//å¼•æ•°ï¼šrowLength	ç”»åƒã®ä¸­ã«æ¨ªã«ä½•æ–‡å­—ä¸¦ã‚“ã§ã„ã‚‹ã‹
+	//æˆ»å€¤ï¼šæˆåŠŸï¼å¤±æ•—
 	HRESULT Initialize(const char* fileName, const unsigned int charWidth, const unsigned int charHeight, const unsigned int rowLength);
 
 
-	//•`‰æi•¶š—ñj
-	//ˆø”Fx, y	•\¦ˆÊ’ui¶ãj
-	//ˆø”Fstr		•\¦‚µ‚½‚¢•¶š—ñ
+	//æç”»ï¼ˆæ–‡å­—åˆ—ï¼‰
+	//å¼•æ•°ï¼šx, y	è¡¨ç¤ºä½ç½®ï¼ˆå·¦ä¸Šï¼‰
+	//å¼•æ•°ï¼šstr		è¡¨ç¤ºã—ãŸã„æ–‡å­—åˆ—
 	void Draw(int x, int y, const char* str);
 
-	//•`‰æi®”’lj
-	//ˆø”Fx, y	•\¦ˆÊ’ui¶ãj
-	//ˆø”Fvalue	•\¦‚µ‚½‚¢’l
+	//æç”»ï¼ˆæ•´æ•°å€¤ï¼‰
+	//å¼•æ•°ï¼šx, y	è¡¨ç¤ºä½ç½®ï¼ˆå·¦ä¸Šï¼‰
+	//å¼•æ•°ï¼švalue	è¡¨ç¤ºã—ãŸã„å€¤
 	void Draw(int x, int y, int value);
 
-	//‰ğ•ú
+	//è§£æ”¾
 	void Release();
 };
 

@@ -1,4 +1,4 @@
-#include "TextureManager.h"
+ï»¿#include "TextureManager.h"
 #include "Direct3D.h"
 #include <vector>
 
@@ -11,15 +11,24 @@ namespace {
         std::shared_ptr<Texture> texture;
     };
 
-    // “Ç‚İ‚ñ‚¾‰æ‘œ‚ÍAClear()‚ªŒÄ‚Î‚ê‚é‚Ü‚ÅŠÇ—•\‚Å•Û‚·‚éB
+    // èª­ã¿è¾¼ã‚“ã ç”»åƒã¯ã€Clear()ãŒå‘¼ã°ã‚Œã‚‹ã¾ã§ç®¡ç†è¡¨ã§ä¿æŒã™ã‚‹ã€‚
     std::vector<CachedTexture> textureCache;
+
+    // å¤§æ–‡å­—ãƒ»å°æ–‡å­—ã‚’åŒºåˆ¥ã›ãšã€ãƒ‘ã‚¹ã‚’æ¯”è¼ƒã™ã‚‹ã€‚
+    bool IsSamePath(const std::wstring& first, const std::wstring& second) {
+        return CompareStringOrdinal(
+            first.c_str(), -1,
+            second.c_str(), -1,
+            TRUE
+        ) == CSTR_EQUAL;
+    }
 
     std::shared_ptr<Texture> FindTexture(const std::wstring& path) {
         for (const CachedTexture& entry : textureCache) {
             if (entry.device != Direct3D::pDevice_.Get()) {
                 continue;
             }
-            if (entry.path != path) {
+            if (!IsSamePath(entry.path, path)) {
                 continue;
             }
             return entry.texture;
@@ -30,7 +39,7 @@ namespace {
 
 namespace TextureManager {
     void Clear() {
-        // g—p’†‚ÌŞ¿‚ª‚ ‚ê‚ÎA‚»‚ÌŞ¿‚Ìshared_ptr‚É‚æ‚Á‚Ä‰æ‘œ‚Í‘¶‘±‚·‚éB
+        // ä½¿ç”¨ä¸­ã®æè³ªãŒã‚ã‚Œã°ã€ãã®æè³ªã®shared_ptrã«ã‚ˆã£ã¦ç”»åƒã¯å­˜ç¶šã™ã‚‹ã€‚
         textureCache.clear();
     }
 
@@ -46,9 +55,9 @@ namespace TextureManager {
         }
         fullPath = fullPath.lexically_normal();
 
-        // Windowsã‚ÅA‘å•¶š¬•¶š‚¾‚¯‚ªˆÙ‚È‚éƒpƒX‚à“¯‚¶‰æ‘œ‚Æ‚µ‚Äˆµ‚¤B
-        std::wstring cachePath = fullPath.native();
-        CharLowerBuffW(cachePath.data(), static_cast<DWORD>(cachePath.size()));
+        // Windowsä¸Šã§ã€å¤§æ–‡å­—å°æ–‡å­—ã ã‘ãŒç•°ãªã‚‹ãƒ‘ã‚¹ã‚‚åŒã˜ç”»åƒã¨ã—ã¦æ‰±ã†ã€‚
+        const std::wstring cachePath = fullPath.native();
+
 
 
         std::shared_ptr<Texture> texture = FindTexture(cachePath);
@@ -56,7 +65,7 @@ namespace TextureManager {
             return texture;
         }
 
-        // –¢“o˜^‚Ì‰æ‘œ‚¾‚¯A]—ˆ‚ÌTexture API‚Å“Ç‚İ‚ŞB
+        // æœªç™»éŒ²ã®ç”»åƒã ã‘ã€å¾“æ¥ã®Texture APIã§èª­ã¿è¾¼ã‚€ã€‚
         texture = std::make_shared<Texture>();
         const HRESULT result = texture->Load(fullPath.string());
         if (FAILED(result)) {

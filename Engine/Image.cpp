@@ -1,4 +1,4 @@
-﻿#include "Global.h"
+﻿
 #include "Image.h"
 
 //3D画像を管理する
