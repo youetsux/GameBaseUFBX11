@@ -109,6 +109,47 @@ class LifetimeCollider : public Collider
 
 int LifetimeCollider::destroyed = 0;
 
+static void CheckBoxSphereCase(XMFLOAT3 boxPosition, XMFLOAT3 boxCenter,
+                               XMFLOAT3 boxSize, XMFLOAT3 spherePosition,
+                               XMFLOAT3 sphereCenter, float radius, bool expected)
+{
+    LifetimeObject root(nullptr);
+    LifetimeObject boxObject(&root);
+    LifetimeObject sphereObject(&root);
+    boxObject.SetPosition(boxPosition);
+    sphereObject.SetPosition(spherePosition);
+    BoxCollider box(boxCenter, boxSize);
+    SphereCollider sphere(sphereCenter, radius);
+    box.SetGameObject(&boxObject);
+    sphere.SetGameObject(&sphereObject);
+    Collider *boxCollider = &box;
+    Collider *sphereCollider = &sphere;
+    check(boxCollider->IsHit(sphereCollider) == expected, "box to sphere collision");
+    check(sphereCollider->IsHit(boxCollider) == expected, "sphere to box collision symmetry");
+}
+
+static void TestBoxSphereCollision()
+{
+    const XMFLOAT3 origin(0, 0, 0);
+    const XMFLOAT3 boxSize(2, 2, 2);
+    CheckBoxSphereCase(origin, origin, boxSize, origin, origin, 0.5f, true);
+    CheckBoxSphereCase(origin, origin, boxSize, XMFLOAT3(2, 0, 0), origin, 1, true);
+    CheckBoxSphereCase(origin, origin, boxSize, XMFLOAT3(-2, 0, 0), origin, 1, true);
+    CheckBoxSphereCase(origin, origin, boxSize, XMFLOAT3(2.01f, 0, 0), origin, 1, false);
+    CheckBoxSphereCase(origin, origin, boxSize, XMFLOAT3(1.6f, 1.6f, 0), origin, 1, true);
+    CheckBoxSphereCase(origin, origin, boxSize, XMFLOAT3(1.8f, 1.8f, 0), origin, 1, false);
+    CheckBoxSphereCase(origin, origin, boxSize, XMFLOAT3(1.5f, 1.5f, 1.5f), origin, 1, true);
+    CheckBoxSphereCase(origin, origin, boxSize, XMFLOAT3(1.6f, 1.6f, 1.6f), origin, 1, false);
+    CheckBoxSphereCase(origin, origin, XMFLOAT3(2, 4, 6), XMFLOAT3(0, 0, 4), origin, 1, true);
+    CheckBoxSphereCase(origin, origin, XMFLOAT3(2, 4, 6), XMFLOAT3(0, 3.1f, 0), origin, 1, false);
+    CheckBoxSphereCase(XMFLOAT3(10, 20, 30), XMFLOAT3(1, 2, 3), boxSize,
+                      XMFLOAT3(10, 20, 30), XMFLOAT3(3, 2, 3), 1, true);
+    CheckBoxSphereCase(XMFLOAT3(10, 20, 30), XMFLOAT3(1, 2, 3), boxSize,
+                      XMFLOAT3(10, 20, 30), XMFLOAT3(3.1f, 2, 3), 1, false);
+    CheckBoxSphereCase(origin, origin, boxSize, origin, origin, 0, true);
+    CheckBoxSphereCase(origin, origin, boxSize, XMFLOAT3(2, 0, 0), origin, 0, false);
+}
+
 static void TestObjectOwnership()
 {
     LifetimeObject::released = 0;
@@ -949,6 +990,7 @@ int main(int argc, char **argv)
     }
     TestCpuBake();
     TestCrowdScene();
+    TestBoxSphereCollision();
     TestObjectOwnership();
     TestImageOwnership();
     TestParticleOwnership();

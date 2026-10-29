@@ -38,25 +38,57 @@ bool Collider::IsHitBoxVsBox(BoxCollider *boxA, BoxCollider *boxB)
 
 // 箱型と球体の衝突判定
 // 引数：box	箱型判定
-// 引数：sphere	２つ目の箱型判定
+// 引数：sphere	球体判定
 // 戻値：接触していればtrue
 bool Collider::IsHitBoxVsCircle(BoxCollider *box, SphereCollider *sphere)
 {
-    XMFLOAT3 circlePos =
+    const XMFLOAT3 spherePosition =
         Transform::Float3Add(sphere->pGameObject_->GetWorldPosition(), sphere->center_);
-    XMFLOAT3 boxPos = Transform::Float3Add(box->pGameObject_->GetWorldPosition(), box->center_);
+    const XMFLOAT3 boxPosition =
+        Transform::Float3Add(box->pGameObject_->GetWorldPosition(), box->center_);
 
-    if (circlePos.x > boxPos.x - box->size_.x - sphere->size_.x &&
-        circlePos.x < boxPos.x + box->size_.x + sphere->size_.x &&
-        circlePos.y > boxPos.y - box->size_.y - sphere->size_.x &&
-        circlePos.y < boxPos.y + box->size_.y + sphere->size_.x &&
-        circlePos.z > boxPos.z - box->size_.z - sphere->size_.x &&
-        circlePos.z < boxPos.z + box->size_.z + sphere->size_.x)
+    // size_は箱の全幅・全高・全奥行きなので、中心からの距離はその半分。
+    const XMFLOAT3 halfSize(box->size_.x * 0.5f, box->size_.y * 0.5f, box->size_.z * 0.5f);
+    const XMFLOAT3 minimum(boxPosition.x - halfSize.x, boxPosition.y - halfSize.y,
+                          boxPosition.z - halfSize.z);
+    const XMFLOAT3 maximum(boxPosition.x + halfSize.x, boxPosition.y + halfSize.y,
+                          boxPosition.z + halfSize.z);
+
+    // 球の中心を箱の範囲へ収めると、箱の内側または表面にある最近点になる。
+    XMFLOAT3 closestPoint = spherePosition;
+    if (closestPoint.x < minimum.x)
     {
-        return true;
+        closestPoint.x = minimum.x;
+    }
+    else if (closestPoint.x > maximum.x)
+    {
+        closestPoint.x = maximum.x;
+    }
+    if (closestPoint.y < minimum.y)
+    {
+        closestPoint.y = minimum.y;
+    }
+    else if (closestPoint.y > maximum.y)
+    {
+        closestPoint.y = maximum.y;
+    }
+    if (closestPoint.z < minimum.z)
+    {
+        closestPoint.z = minimum.z;
+    }
+    else if (closestPoint.z > maximum.z)
+    {
+        closestPoint.z = maximum.z;
     }
 
-    return false;
+    // 平方根は不要。中心が箱の内側なら距離は0になり、接触も衝突として扱う。
+    const float distanceX = spherePosition.x - closestPoint.x;
+    const float distanceY = spherePosition.y - closestPoint.y;
+    const float distanceZ = spherePosition.z - closestPoint.z;
+    const float distanceSquared = distanceX * distanceX + distanceY * distanceY +
+                                  distanceZ * distanceZ;
+    const float radius = sphere->size_.x;
+    return distanceSquared <= radius * radius;
 }
 
 // 球体同士の衝突判定
