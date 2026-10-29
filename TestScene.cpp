@@ -1,8 +1,9 @@
-#include "TestScene.h"
+ï»¿#include "TestScene.h"
 #include "Engine/Model.h"
 #include "Engine/Camera.h"
 
-namespace {
+namespace
+{
     const int ModelColumns = 10;
     const int ModelRows = 20;
     const float ModelSpacing = 1.0f;
@@ -11,11 +12,10 @@ namespace {
     const int AnimationFrameOffsetStep = 1;
     const float CameraMoveSeconds = 30.0f;
     const float CameraEndDistanceRatio = 0.15f;
-    const char* ModelFilename = "skg.fbx";
-}
+    const char *ModelFilename = "skg.fbx";
+} // namespace
 
-TestScene::TestScene(GameObject* parent)
-    : GameObject(parent, "TestScene")
+TestScene::TestScene(GameObject *parent) : GameObject(parent, "TestScene")
 {
 }
 
@@ -26,11 +26,14 @@ void TestScene::Initialize()
     const float halfWidth = (ModelColumns - 1) * ModelSpacing * 0.5f;
     const float halfDepth = (ModelRows - 1) * ModelSpacing * 0.5f;
 
-    for (int row = 0; row < ModelRows; ++row) {
-        for (int column = 0; column < ModelColumns; ++column) {
-            // ƒnƒ“ƒhƒ‹‚Æ”z’u‚ÍŒÂ•ÊBFBX‚Æ‰æ‘œ‚Í“Ç‚İ‚İÏ‚İƒf[ƒ^‚ğ‹¤—L‚·‚éB
+    for (int row = 0; row < ModelRows; ++row)
+    {
+        for (int column = 0; column < ModelColumns; ++column)
+        {
+            // ãƒãƒ³ãƒ‰ãƒ«ã¨é…ç½®ã¯å€‹åˆ¥ã€‚FBXã¨ç”»åƒã¯èª­ã¿è¾¼ã¿æ¸ˆã¿ãƒ‡ãƒ¼ã‚¿ã‚’å…±æœ‰ã™ã‚‹ã€‚
             const int handle = Model::Load(ModelFilename);
-            if (handle < 0) {
+            if (handle < 0)
+            {
                 OutputDebugStringA("Crowd test: model load failed.\n");
                 Release();
                 return;
@@ -38,7 +41,8 @@ void TestScene::Initialize()
 
             // Bake once; all later handles share this FBX and its CPU snapshots.
             if (modelHandles_.empty() &&
-                !Model::BakeAnimation(handle, AnimationStartFrame, AnimationEndFrame)) {
+                !Model::BakeAnimation(handle, AnimationStartFrame, AnimationEndFrame))
+            {
                 OutputDebugStringA("Crowd test: animation bake failed.\n");
                 Model::Release(handle);
                 return;
@@ -69,19 +73,21 @@ void TestScene::Initialize()
 
 void TestScene::Update()
 {
-    if (modelHandles_.empty()) {
+    if (modelHandles_.empty())
+    {
         return;
     }
 
-    // Œo‰ß•b”‚Åi‚ß‚é‚½‚ßAFPS‚É‚æ‚Á‚ÄƒJƒƒ‰‚Ì‘¬‚³‚Í•Ï‚í‚ç‚È‚¢B
+    // çµŒéç§’æ•°ã§é€²ã‚ã‚‹ãŸã‚ã€FPSã«ã‚ˆã£ã¦ã‚«ãƒ¡ãƒ©ã®é€Ÿã•ã¯å¤‰ã‚ã‚‰ãªã„ã€‚
     const ULONGLONG elapsedMilliseconds = GetTickCount64() - cameraStartTime_;
     const float elapsedSeconds = static_cast<float>(elapsedMilliseconds) / 1000.0f;
     float progress = elapsedSeconds / CameraMoveSeconds;
-    if (progress > 1.0f) {
+    if (progress > 1.0f)
+    {
         progress = 1.0f;
     }
 
-    // ŠJnˆÊ’u‚©‚ç’‹“_‚Ö’¼ü“I‚ÉˆÚ“®‚µAè‘O‚Å~‚ß‚éB
+    // é–‹å§‹ä½ç½®ã‹ã‚‰æ³¨è¦–ç‚¹ã¸ç›´ç·šçš„ã«ç§»å‹•ã—ã€æ‰‹å‰ã§æ­¢ã‚ã‚‹ã€‚
     const float distanceRatio = 1.0f - progress * (1.0f - CameraEndDistanceRatio);
     XMFLOAT3 position;
     position.x = cameraTarget_.x + (cameraStartPosition_.x - cameraTarget_.x) * distanceRatio;
@@ -92,14 +98,16 @@ void TestScene::Update()
 
 void TestScene::Draw()
 {
-    for (int handle : modelHandles_) {
+    for (int handle : modelHandles_)
+    {
         Model::Draw(handle);
     }
 }
 
 void TestScene::Release()
 {
-    for (int handle : modelHandles_) {
+    for (int handle : modelHandles_)
+    {
         Model::Release(handle);
     }
     modelHandles_.clear();

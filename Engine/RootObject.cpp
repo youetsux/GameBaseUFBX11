@@ -1,12 +1,9 @@
 ﻿#include "RootObject.h"
 #include "SceneManager.h"
 
-
-RootObject::RootObject():
-	GameObject(nullptr, "RootObject")
+RootObject::RootObject() : GameObject(nullptr, "RootObject")
 {
 }
-
 
 RootObject::~RootObject()
 {
@@ -14,7 +11,7 @@ RootObject::~RootObject()
 
 void RootObject::Initialize()
 {
-	Instantiate<SceneManager>(this);
+    Instantiate<SceneManager>(this);
 }
 
 void RootObject::Update()
