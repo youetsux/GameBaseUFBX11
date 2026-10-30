@@ -1,6 +1,7 @@
 ﻿#include "SphereCollider.h"
 #include "BoxCollider.h"
 #include "Model.h"
+#include "CapsuleCollider.h"
 
 // コンストラクタ（当たり判定の作成）
 // 引数：basePos	当たり判定の中心位置（ゲームオブジェクトの原点から見た位置）
@@ -23,8 +24,21 @@ SphereCollider::SphereCollider(XMFLOAT3 center, float radius)
 // 戻値：接触してればtrue
 bool SphereCollider::IsHit(Collider *target)
 {
+    if (target == nullptr)
+    {
+        return false;
+    }
     if (target->type_ == COLLIDER_BOX)
-        return IsHitBoxVsCircle((BoxCollider *)target, this);
-    else
-        return IsHitCircleVsCircle((SphereCollider *)target, this);
+    {
+        return IsHitBoxVsCircle(static_cast<BoxCollider *>(target), this);
+    }
+    if (target->type_ == COLLIDER_CIRCLE)
+    {
+        return IsHitCircleVsCircle(this, static_cast<SphereCollider *>(target));
+    }
+    if (target->type_ == COLLIDER_CAPSULE)
+    {
+        return IsHitSphereVsCapsule(this, static_cast<CapsuleCollider *>(target));
+    }
+    return false;
 }

@@ -1,11 +1,12 @@
 ﻿#include "BoxCollider.h"
+#include "CapsuleCollider.h"
 #include "SphereCollider.h"
 #include "GameObject.h"
 #include "Model.h"
 #include "Transform.h"
 
 // コンストラクタ
-Collider::Collider() : pGameObject_(nullptr)
+Collider::Collider() : pGameObject_(nullptr), hDebugModel_(-1)
 {
 }
 
@@ -50,9 +51,9 @@ bool Collider::IsHitBoxVsCircle(BoxCollider *box, SphereCollider *sphere)
     // size_は箱の全幅・全高・全奥行きなので、中心からの距離はその半分。
     const XMFLOAT3 halfSize(box->size_.x * 0.5f, box->size_.y * 0.5f, box->size_.z * 0.5f);
     const XMFLOAT3 minimum(boxPosition.x - halfSize.x, boxPosition.y - halfSize.y,
-                          boxPosition.z - halfSize.z);
+                           boxPosition.z - halfSize.z);
     const XMFLOAT3 maximum(boxPosition.x + halfSize.x, boxPosition.y + halfSize.y,
-                          boxPosition.z + halfSize.z);
+                           boxPosition.z + halfSize.z);
 
     // 球の中心を箱の範囲へ収めると、箱の内側または表面にある最近点になる。
     XMFLOAT3 closestPoint = spherePosition;
@@ -85,8 +86,8 @@ bool Collider::IsHitBoxVsCircle(BoxCollider *box, SphereCollider *sphere)
     const float distanceX = spherePosition.x - closestPoint.x;
     const float distanceY = spherePosition.y - closestPoint.y;
     const float distanceZ = spherePosition.z - closestPoint.z;
-    const float distanceSquared = distanceX * distanceX + distanceY * distanceY +
-                                  distanceZ * distanceZ;
+    const float distanceSquared =
+        distanceX * distanceX + distanceY * distanceY + distanceZ * distanceZ;
     const float radius = sphere->size_.x;
     return distanceSquared <= radius * radius;
 }
@@ -124,4 +125,83 @@ void Collider::Draw(XMFLOAT3 position)
     transform.Calclation();
     Model::SetTransform(hDebugModel_, transform);
     Model::Draw(hDebugModel_);
+}
+
+namespace
+{
+// 数値を区間内へ収める。球の中心に最も近い線分上の位置を求める。
+float ClampToInterval(float value, float minimum, float maximum)
+{
+    if (value < minimum)
+    {
+        return minimum;
+    }
+    if (value > maximum)
+    {
+        return maximum;
+    }
+    return value;
+}
+
+// 重なる区間の距離は0。離れている場合は、近い端点同士の距離になる。
+float IntervalGap(float firstMin, float firstMax, float secondMin, float secondMax)
+{
+    if (firstMax < secondMin)
+    {
+        return secondMin - firstMax;
+    }
+    if (secondMax < firstMin)
+    {
+        return firstMin - secondMax;
+    }
+    return 0.0f;
+}
+} // namespace
+
+bool Collider::IsHitSphereVsCapsule(SphereCollider *sphere, CapsuleCollider *capsule)
+{
+    const XMFLOAT3 sphereCenter =
+        Transform::Float3Add(sphere->pGameObject_->GetWorldPosition(), sphere->center_);
+    const XMFLOAT3 center =
+        Transform::Float3Add(capsule->pGameObject_->GetWorldPosition(), capsule->center_);
+    const float nearestY = ClampToInterval(sphereCenter.y, center.y - capsule->halfSegment_,
+                                           center.y + capsule->halfSegment_);
+    const float dx = sphereCenter.x - center.x;
+    const float dy = sphereCenter.y - nearestY;
+    const float dz = sphereCenter.z - center.z;
+    const float radiusSum = sphere->size_.x + capsule->radius_;
+    return dx * dx + dy * dy + dz * dz <= radiusSum * radiusSum;
+}
+
+bool Collider::IsHitBoxVsCapsule(BoxCollider *box, CapsuleCollider *capsule)
+{
+    const XMFLOAT3 boxCenter =
+        Transform::Float3Add(box->pGameObject_->GetWorldPosition(), box->center_);
+    const XMFLOAT3 center =
+        Transform::Float3Add(capsule->pGameObject_->GetWorldPosition(), capsule->center_);
+    const float nearestX = ClampToInterval(center.x, boxCenter.x - box->size_.x * 0.5f,
+                                           boxCenter.x + box->size_.x * 0.5f);
+    const float nearestZ = ClampToInterval(center.z, boxCenter.z - box->size_.z * 0.5f,
+                                           boxCenter.z + box->size_.z * 0.5f);
+    const float dx = center.x - nearestX;
+    const float dz = center.z - nearestZ;
+    const float dy =
+        IntervalGap(center.y - capsule->halfSegment_, center.y + capsule->halfSegment_,
+                    boxCenter.y - box->size_.y * 0.5f, boxCenter.y + box->size_.y * 0.5f);
+    return dx * dx + dy * dy + dz * dz <= capsule->radius_ * capsule->radius_;
+}
+
+bool Collider::IsHitCapsuleVsCapsule(CapsuleCollider *first, CapsuleCollider *second)
+{
+    const XMFLOAT3 firstCenter =
+        Transform::Float3Add(first->pGameObject_->GetWorldPosition(), first->center_);
+    const XMFLOAT3 secondCenter =
+        Transform::Float3Add(second->pGameObject_->GetWorldPosition(), second->center_);
+    const float dx = firstCenter.x - secondCenter.x;
+    const float dz = firstCenter.z - secondCenter.z;
+    const float dy =
+        IntervalGap(firstCenter.y - first->halfSegment_, firstCenter.y + first->halfSegment_,
+                    secondCenter.y - second->halfSegment_, secondCenter.y + second->halfSegment_);
+    const float radiusSum = first->radius_ + second->radius_;
+    return dx * dx + dy * dy + dz * dz <= radiusSum * radiusSum;
 }

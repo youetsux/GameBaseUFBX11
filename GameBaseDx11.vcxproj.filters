@@ -184,4 +184,10 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup><ClInclude Include="Engine\TextureManager.h" /></ItemGroup>
+<ItemGroup><ClCompile Include="Engine\CapsuleCollider.cpp" /></ItemGroup>
+<ItemGroup><ClInclude Include="Engine\CapsuleCollider.h" /></ItemGroup>
+<ItemGroup>
+    <ClCompile Include="Lessons\CapsuleLessonScene.cpp" />
+    <ClInclude Include="Lessons\CapsuleLessonScene.h" />
+  </ItemGroup>
 </Project>

@@ -3,8 +3,10 @@
 #include "Model.h"
 #include "Image.h"
 #include "GameObject.h"
+#include "CapsuleCollider.h"
 #include "VFX.h"
 #include "../TestScene.h"
+#include "../Lessons/CapsuleLessonScene.h"
 #include "Direct3D.h"
 #include "Camera.h"
 #include "Texture.h"
@@ -148,6 +150,108 @@ static void TestBoxSphereCollision()
                       XMFLOAT3(10, 20, 30), XMFLOAT3(3.1f, 2, 3), 1, false);
     CheckBoxSphereCase(origin, origin, boxSize, origin, origin, 0, true);
     CheckBoxSphereCase(origin, origin, boxSize, XMFLOAT3(2, 0, 0), origin, 0, false);
+}
+
+static void CheckCapsulePair(Collider* first, Collider* second, bool expected)
+{
+    check(first->IsHit(second) == expected, "capsule pair forward");
+    check(second->IsHit(first) == expected, "capsule pair reverse");
+}
+
+static void TestCapsuleCollision()
+{
+    LifetimeObject root(nullptr);
+    LifetimeObject firstObject(&root);
+    LifetimeObject secondObject(&root);
+    CapsuleCollider capsule(XMFLOAT3(0,0,0), 1, 4);
+    SphereCollider sphere(XMFLOAT3(0,0,0), 0.5f);
+    BoxCollider box(XMFLOAT3(0,0,0), XMFLOAT3(2,2,2));
+    CapsuleCollider other(XMFLOAT3(0,0,0), 1, 4);
+    capsule.SetGameObject(&firstObject);
+    sphere.SetGameObject(&secondObject);
+    box.SetGameObject(&secondObject);
+    other.SetGameObject(&secondObject);
+    secondObject.SetPosition(1.5f,0,0); CheckCapsulePair(&capsule,&sphere,true);
+    secondObject.SetPosition(1.51f,0,0); CheckCapsulePair(&capsule,&sphere,false);
+    secondObject.SetPosition(0,2.5f,0); CheckCapsulePair(&capsule,&sphere,true);
+    secondObject.SetPosition(0,2.51f,0); CheckCapsulePair(&capsule,&sphere,false);
+    secondObject.SetPosition(0,-2.5f,0); CheckCapsulePair(&capsule,&sphere,true);
+    secondObject.SetPosition(0,0,0); CheckCapsulePair(&capsule,&sphere,true);
+    secondObject.SetPosition(2,0,0); CheckCapsulePair(&capsule,&box,true);
+    secondObject.SetPosition(2.01f,0,0); CheckCapsulePair(&capsule,&box,false);
+    secondObject.SetPosition(1.8f,0,1.8f); CheckCapsulePair(&capsule,&box,false);
+    secondObject.SetPosition(1.5f,0,1.5f); CheckCapsulePair(&capsule,&box,true);
+    secondObject.SetPosition(0,3,0); CheckCapsulePair(&capsule,&box,true);
+    secondObject.SetPosition(0,3.01f,0); CheckCapsulePair(&capsule,&box,false);
+    secondObject.SetPosition(0,-3,0); CheckCapsulePair(&capsule,&box,true);
+    secondObject.SetPosition(0,0,0); CheckCapsulePair(&capsule,&box,true);
+    secondObject.SetPosition(2,0,0); CheckCapsulePair(&capsule,&other,true);
+    secondObject.SetPosition(2.01f,0,0); CheckCapsulePair(&capsule,&other,false);
+    secondObject.SetPosition(0,4,0); CheckCapsulePair(&capsule,&other,true);
+    secondObject.SetPosition(0,4.01f,0); CheckCapsulePair(&capsule,&other,false);
+    secondObject.SetPosition(0,-4,0); CheckCapsulePair(&capsule,&other,true);
+    CapsuleCollider sphereCapsule(XMFLOAT3(0,0,0), 1, 2);
+    sphereCapsule.SetGameObject(&firstObject);
+    secondObject.SetPosition(0,1.5f,0); CheckCapsulePair(&sphereCapsule,&sphere,true);
+    secondObject.SetPosition(0,1.51f,0); CheckCapsulePair(&sphereCapsule,&sphere,false);
+    firstObject.SetPosition(10,20,30);
+    CapsuleCollider offset(XMFLOAT3(1,2,3),1,4);
+    offset.SetGameObject(&firstObject);
+    secondObject.SetPosition(12.5f,22,33); CheckCapsulePair(&offset,&sphere,true);
+    secondObject.SetPosition(12.51f,22,33); CheckCapsulePair(&offset,&sphere,false);
+    // Collider*から呼んでもカプセル専用Drawへ到達することをGPU統計で確認する。
+    Direct3D::SetShader(Direct3D::SHADER_UNLIT);
+    D3D11_QUERY_DESC description{};
+    description.Query = D3D11_QUERY_PIPELINE_STATISTICS;
+    ComPtr<ID3D11Query> query;
+    check(SUCCEEDED(Direct3D::pDevice_->CreateQuery(&description, &query)), "capsule draw query");
+    if (query) {
+        Collider* drawable = &capsule;
+        Direct3D::pContext_->Begin(query.Get());
+        drawable->Draw(XMFLOAT3(0,0,0));
+        Direct3D::pContext_->End(query.Get());
+        D3D11_QUERY_DATA_PIPELINE_STATISTICS statistics{};
+        HRESULT result = S_FALSE;
+        const ULONGLONG deadline = GetTickCount64() + 10000;
+        while (result == S_FALSE && GetTickCount64() < deadline) {
+            result = Direct3D::pContext_->GetData(query.Get(), &statistics, sizeof(statistics), 0);
+            if (result == S_FALSE) { Sleep(1); }
+        }
+        check(result == S_OK && statistics.IAPrimitives == 256,
+              "virtual capsule draw submits both hemispheres and cylinder");
+    }
+    Direct3D::SetShader(Direct3D::SHADER_3D);
+    printf("CAPSULE: 23 cases in both directions (46 checks) passed if no failures above.\n");
+}
+
+static void TestHitDisplay()
+{
+    LifetimeObject root(nullptr);
+    CapsuleLessonScene scene(&root);
+    scene.Initialize();
+    check(scene.GetChildList()->size() == 5, "lesson has four actors and final HUD");
+    if (scene.GetChildList()->size() == 5) {
+        GameObject* player = scene.GetChildList()->front().get();
+        scene.DrawSub();
+        ComPtr<ID3D11Buffer> buffer;
+        UINT strideWithoutHit = 0, offset = 0;
+        Direct3D::pContext_->IAGetVertexBuffers(0,1,&buffer,&strideWithoutHit,&offset);
+        player->OnCollision(&root);
+        scene.DrawSub();
+        buffer.Reset();
+        UINT strideWithHit = 0;
+        Direct3D::pContext_->IAGetVertexBuffers(0,1,&buffer,&strideWithHit,&offset);
+        check(strideWithHit == sizeof(XMFLOAT3)*2, "HIT draws sprite after 3D geometry");
+        check(strideWithoutHit != strideWithHit, "HIT is hidden before collision");
+        player->Update();
+        scene.DrawSub();
+        buffer.Reset();
+        UINT strideAfterReset = 0;
+        Direct3D::pContext_->IAGetVertexBuffers(0,1,&buffer,&strideAfterReset,&offset);
+        check(strideAfterReset == strideWithoutHit, "HIT disappears after contact reset");
+    }
+    scene.ReleaseSub();
+    printf("HIT HUD: hidden/contact/reset draw states checked.\n");
 }
 
 static void TestObjectOwnership()
@@ -991,6 +1095,8 @@ int main(int argc, char **argv)
     TestCpuBake();
     TestCrowdScene();
     TestBoxSphereCollision();
+    TestCapsuleCollision();
+    TestHitDisplay();
     TestObjectOwnership();
     TestImageOwnership();
     TestParticleOwnership();

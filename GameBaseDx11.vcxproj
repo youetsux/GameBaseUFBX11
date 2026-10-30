@@ -134,6 +134,7 @@
     <ClCompile Include="Engine\BoxCollider.cpp" />
     <ClCompile Include="Engine\Camera.cpp" />
     <ClCompile Include="Engine\Collider.cpp" />
+    <ClCompile Include="Engine\CapsuleCollider.cpp" />
     <ClCompile Include="Engine\CsvReader.cpp" />
     <ClCompile Include="Engine\Debug.cpp" />
     <ClCompile Include="Engine\Direct3D.cpp" />
@@ -211,4 +212,9 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+<ItemGroup><ClInclude Include="Engine\CapsuleCollider.h" /></ItemGroup>
+<ItemGroup>
+    <ClCompile Include="Lessons\CapsuleLessonScene.cpp" />
+    <ClInclude Include="Lessons\CapsuleLessonScene.h" />
+  </ItemGroup>
 </Project>

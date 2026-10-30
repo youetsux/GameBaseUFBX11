@@ -7,12 +7,14 @@ using namespace DirectX;
 class GameObject;
 class BoxCollider;
 class SphereCollider;
+class CapsuleCollider;
 
 // あたり判定のタイプ
 enum ColliderType
 {
-    COLLIDER_BOX,   // 箱型
-    COLLIDER_CIRCLE // 球体
+    COLLIDER_BOX,    // 箱型
+    COLLIDER_CIRCLE, // 球体
+    COLLIDER_CAPSULE // Y軸固定カプセル
 };
 
 //-----------------------------------------------------------
@@ -23,6 +25,7 @@ class Collider
     // それぞれのクラスのprivateメンバにアクセスできるようにする
     friend class BoxCollider;
     friend class SphereCollider;
+    friend class CapsuleCollider;
 
   protected:
     GameObject *pGameObject_; // この判定をつけたゲームオブジェクト
@@ -61,9 +64,13 @@ class Collider
     // 戻値：接触していればtrue
     bool IsHitCircleVsCircle(SphereCollider *circleA, SphereCollider *circleB);
 
+    bool IsHitSphereVsCapsule(SphereCollider *sphere, CapsuleCollider *capsule);
+    bool IsHitBoxVsCapsule(BoxCollider *box, CapsuleCollider *capsule);
+    bool IsHitCapsuleVsCapsule(CapsuleCollider *first, CapsuleCollider *second);
+
     // テスト表示用の枠を描画
     // 引数：position	オブジェクトの位置
-    void Draw(XMFLOAT3 position);
+    virtual void Draw(XMFLOAT3 position);
 
     // セッター
     void SetGameObject(GameObject *gameObject)

@@ -1,41 +1,42 @@
-ï»¿#include "sceneManager.h"
+#include "sceneManager.h"
 
 #include "../TestScene.h"
+#include "../Lessons/CapsuleLessonScene.h"
 #include "Model.h"
 #include "Image.h"
 #include "TextureManager.h"
 #include "Audio.h"
 
-// ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
+// ƒRƒ“ƒXƒgƒ‰ƒNƒ^
 SceneManager::SceneManager(GameObject *parent) : GameObject(parent, "SceneManager")
 {
 }
 
-// åˆæœŸåŒ–
+// ‰Šú‰»
 void SceneManager::Initialize()
 {
-    // æœ€åˆã®ã‚·ãƒ¼ãƒ³ã‚’æº–å‚™
+    // Å‰‚ÌƒV[ƒ“‚ğ€”õ
     currentSceneID_ = SCENE_ID_TEST;
     nextSceneID_ = currentSceneID_;
-    Instantiate<TestScene>(this);
+    Instantiate<CapsuleLessonScene>(this);
 }
 
-// æ›´æ–°
+// XV
 void SceneManager::Update()
 {
-    // æ¬¡ã®ã‚·ãƒ¼ãƒ³ãŒç¾åœ¨ã®ã‚·ãƒ¼ãƒ³ã¨é•ã†ã€€ï¼ã€€ã‚·ãƒ¼ãƒ³ã‚’åˆ‡ã‚Šæ›¿ãˆãªã‘ã‚Œã°ãªã‚‰ãªã„
+    // Ÿ‚ÌƒV[ƒ“‚ªŒ»İ‚ÌƒV[ƒ“‚Æˆá‚¤@@ƒV[ƒ“‚ğØ‚è‘Ö‚¦‚È‚¯‚ê‚Î‚È‚ç‚È‚¢
     if (currentSceneID_ != nextSceneID_)
     {
-        // ãã®ã‚·ãƒ¼ãƒ³ã®ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã‚’å…¨å‰Šé™¤
+        // ‚»‚ÌƒV[ƒ“‚ÌƒIƒuƒWƒFƒNƒg‚ğ‘Síœ
         KillAllChildren();
 
-        // ãƒ­ãƒ¼ãƒ‰ã—ãŸãƒ‡ãƒ¼ã‚¿ã‚’å…¨å‰Šé™¤
+        // ƒ[ƒh‚µ‚½ƒf[ƒ^‚ğ‘Síœ
         Audio::Release();
         Model::AllRelease();
         Image::AllRelease();
         TextureManager::Clear();
 
-        // æ¬¡ã®ã‚·ãƒ¼ãƒ³ã‚’ä½œæˆ
+        // Ÿ‚ÌƒV[ƒ“‚ğì¬
         switch (nextSceneID_)
         {
         case SCENE_ID_TEST:
@@ -47,17 +48,17 @@ void SceneManager::Update()
     }
 }
 
-// æç”»
+// •`‰æ
 void SceneManager::Draw()
 {
 }
 
-// é–‹æ”¾
+// ŠJ•ú
 void SceneManager::Release()
 {
 }
 
-// ã‚·ãƒ¼ãƒ³åˆ‡ã‚Šæ›¿ãˆï¼ˆå®Ÿéš›ã«åˆ‡ã‚Šæ›¿ã‚ã‚‹ã®ã¯ã“ã®æ¬¡ã®ãƒ•ãƒ¬ãƒ¼ãƒ ï¼‰
+// ƒV[ƒ“Ø‚è‘Ö‚¦iÀÛ‚ÉØ‚è‘Ö‚í‚é‚Ì‚Í‚±‚ÌŸ‚ÌƒtƒŒ[ƒ€j
 void SceneManager::ChangeScene(SCENE_ID next)
 {
     nextSceneID_ = next;
